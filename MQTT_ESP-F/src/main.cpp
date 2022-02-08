@@ -66,8 +66,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     //********************************//
     // TRAITEMENT DES DONNEES RECUES
     //********************************//
-
-
+    
 }
 
 /* Fonction de reconnexion au broker MQTT */
