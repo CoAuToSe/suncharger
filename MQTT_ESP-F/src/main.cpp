@@ -90,7 +90,7 @@ void reconnect() {
             Serial.println("connected");
 
             // Abonnement aux topics au près du broker MQTT
-            snprintf(inTopic, TPC_NAME_SIZE, "ESME/COMPTEUR");
+            snprintf(inTopic, TPC_NAME_SIZE, "ESME/#");
             
             // inTopic => /ESME/COMPTEUR/inTopic
             client.subscribe(inTopic);
@@ -133,6 +133,37 @@ void setup() {
     client.setCallback(callback);
 }
 
+void send(float &my_value, const char * my_topic ) {
+    // Construction du message à envoyer
+    // float current_mA = 0;
+    // float voltage_V = 0;
+    // float shunt_voltage_mV = 0;
+    float value = my_value;
+    // current_mA = ina219.getCurrent_mA();
+    // voltage_V = ina219.getBusVoltage_V();
+    // shunt_voltage_mV = ina219.getShuntVoltage_mV();
+    // init_value = value;
+    // Serial.println(current_mA);
+    // Serial.println(voltage_V);
+    // Serial.println(shunt_voltage_mV);
+    // Serial.println(value);
+    // delay(1000);
+    // float value = init_value;
+    // value = init_value;
+    snprintf (msg, MSG_BUFFER_SIZE,"%f", value);
+    Serial.print("Publish message: ");
+    Serial.print(msg);
+    Serial.print(" topic: ");
+    Serial.println(my_topic);
+    
+    // Construction du topic d'envoi
+    snprintf(outTopic, TPC_NAME_SIZE, my_topic);
+    // outTopic => /ESME/COMPTEUR/outTopic
+
+    // Envoi de la donnée
+    client.publish(outTopic, msg);
+}
+
 void loop() {
 
     // Si perte de connexion, reconnexion!
@@ -156,23 +187,29 @@ void loop() {
         current_mA = ina219.getCurrent_mA();
         voltage_V = ina219.getBusVoltage_V();
         shunt_voltage_mV = ina219.getShuntVoltage_mV();
-        Serial.println(current_mA);
-        Serial.println(voltage_V);
-        Serial.println(shunt_voltage_mV);
-        // delay(1000);
-        value = current_mA*10;
-        snprintf (msg, MSG_BUFFER_SIZE,"%d", value);
-        Serial.print("Publish message: ");
-        Serial.println(msg);
+        // Serial.println(current_mA);
+        // Serial.println(voltage_V);
+        // Serial.println(shunt_voltage_mV);
+        // current_mA *= 1;
+        Serial.println();
+        send(current_mA, "ESME/COMPTEUR_AMP");
+        send(voltage_V, "ESME/COMPTEUR_VOL");
+        send(shunt_voltage_mV, "ESME/COMPTEUR_SmV");
+        // // delay(1000);
+        // value = current_mA*10;
+        // snprintf (msg, MSG_BUFFER_SIZE,"%d", value);
+        // Serial.print("Publish message: ");
+        // Serial.println(msg);
         
-        // Construction du topic d'envoi
-        snprintf(outTopic, TPC_NAME_SIZE, "ESME/COMPTEUR");
-        // outTopic => /ESME/COMPTEUR/outTopic
+        // // Construction du topic d'envoi
+        // snprintf(outTopic, TPC_NAME_SIZE, "ESME/COMPTEUR");
+        // // outTopic => /ESME/COMPTEUR/outTopic
 
-        // Envoi de la donnée
-        client.publish(outTopic, msg);
+        // // Envoi de la donnée
+        // client.publish(outTopic, msg);
     }
 }
+
 
 // #include "Wire.h"
 // #include "Adafruit_INA219.h"
