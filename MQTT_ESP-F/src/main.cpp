@@ -7,7 +7,7 @@
 #define PROJECT_NAME "TEST_MQTT"                          // nom du projet
 const char* ssid = "ESME-FABLAB";                         // indiquer le SSID de votre réseau
 const char* password = "ESME-FABLAB";                     // indiquer le mdp de votre réseau
-const char* mqtt_server = "192.168.1.42";                 // adresse du serveur MQTT auquel vous etes connecté
+const char* mqtt_server = "192.168.1.203";                 // adresse du serveur MQTT auquel vous etes connecté
 
 /** WIFI **/
 WiFiClient espClient;
