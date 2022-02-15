@@ -3,6 +3,7 @@
 Adafruit_INA219 ina219;
 
 void setup() {
+    Serial.println();
     Serial.begin(9600);
     if (! ina219.begin()) {
         Serial.println("Erreur pour trouver le INA219");
