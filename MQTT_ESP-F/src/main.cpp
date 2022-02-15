@@ -4,6 +4,10 @@
 #include <ESP8266WiFi.h>   // permet la connexion du module ESP8266 à la WiFi
 #include <PubSubClient.h>  // permet d'envoyer et de recevoir des messages MQTT
 
+#include "Wire.h"
+#include "Adafruit_INA219.h"
+Adafruit_INA219 ina219;
+
 #define PROJECT_NAME "TEST_MQTT"                          // nom du projet
 const char* ssid = "ESME-FABLAB";                         // indiquer le SSID de votre réseau
 const char* password = "ESME-FABLAB";                     // indiquer le mdp de votre réseau
@@ -106,10 +110,18 @@ void reconnect() {
 
 void setup() {
     // Paramètrage de la pin BUILTIN_LED en sortie
-    pinMode(BUILTIN_LED, OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT);
     
     // Configuration de la communication série à 115200 Mbps
     Serial.begin(115200);
+    // Serial.println();
+    // Serial.begin(9600);
+    if (! ina219.begin()) {
+        Serial.println("Erreur pour trouver le INA219");
+        while (1) { delay(10); }
+    }
+    Serial.print("Courant"); 
+    Serial.print("\t");
 
     // Connexion au WiFi
     setup_wifi();
@@ -138,7 +150,17 @@ void loop() {
         lastMsg = now;
 
         // Construction du message à envoyer
-        ++value;
+        float current_mA = 0;
+        float voltage_V = 0;
+        float shunt_voltage_mV = 0;
+        current_mA = ina219.getCurrent_mA();
+        voltage_V = ina219.getBusVoltage_V();
+        shunt_voltage_mV = ina219.getShuntVoltage_mV();
+        Serial.println(current_mA);
+        Serial.println(voltage_V);
+        Serial.println(shunt_voltage_mV);
+        // delay(1000);
+        value = current_mA*10;
         snprintf (msg, MSG_BUFFER_SIZE,"%d", value);
         Serial.print("Publish message: ");
         Serial.println(msg);
@@ -151,3 +173,26 @@ void loop() {
         client.publish(outTopic, msg);
     }
 }
+
+// #include "Wire.h"
+// #include "Adafruit_INA219.h"
+// Adafruit_INA219 ina219;
+
+// void setup() {
+//     Serial.println();
+//     Serial.begin(9600);
+//     if (! ina219.begin()) {
+//         Serial.println("Erreur pour trouver le INA219");
+//         while (1) { delay(10); }
+//     }
+//     Serial.print("Courant"); 
+//     Serial.print("\t");
+// }
+
+// void loop() {
+//     float current_mA = 0;
+//     current_mA = ina219.getCurrent_mA();
+//     Serial.print(current_mA); 
+//     Serial.print("\t");
+//     delay(1000);
+// }
