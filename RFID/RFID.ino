@@ -62,7 +62,7 @@ void loop() {
                 digitalWrite(pinLEDVerte, LOW);
             }
 
-            else   {  // UID refusé
+            else {  // UID refusé
                 // on allume la LED rouge pendant trois secondes
                 digitalWrite(pinLEDRouge, HIGH);
                 tone(buzz,370,50);
