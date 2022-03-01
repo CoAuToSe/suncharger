@@ -24,60 +24,54 @@ const int pinSDA = 53; // pin SDA du module RC522
 
 MFRC522 rfid(pinSDA, pinRST);
 
-void setup()
-{
-  Serial.begin(9600);
-  SPI.begin();
-  rfid.PCD_Init();
-  pinMode(pinLEDVerte, OUTPUT);
-  pinMode(pinLEDRouge, OUTPUT);
-  pinMode(8, OUTPUT);
+void setup() {
+    Serial.begin(9600);
+    SPI.begin();
+    rfid.PCD_Init();
+    pinMode(pinLEDVerte, OUTPUT);
+    pinMode(pinLEDRouge, OUTPUT);
+    pinMode(8, OUTPUT);
 }
 
-void loop()
-{
-  int refus = 0; // quand cette variable n'est pas nulle, c'est que le code est refusé
+void loop() {
+    int refus = 0; // quand cette variable n'est pas nulle, c'est que le code est refusé
 
-  if (rfid.PICC_IsNewCardPresent())  // on a dédecté un tag
-  {
-    if (rfid.PICC_ReadCardSerial())  // on a lu avec succès son contenu
-    {
-      for (byte i = 0; i < rfid.uid.size; i++) // comparaison avec le bon UID
-      {
-        Serial.print(rfid.uid.uidByte[i], HEX);
-        if (rfid.uid.uidByte[i] != bonUID[i]) {
-          refus++;
+    if (rfid.PICC_IsNewCardPresent()) { // on a dédecté un tag
+        if (rfid.PICC_ReadCardSerial()) { // on a lu avec succès son contenu
+            for (byte i = 0; i < rfid.uid.size; i++) { // comparaison avec le bon UID
+                Serial.print(rfid.uid.uidByte[i], HEX);
+                if (rfid.uid.uidByte[i] != bonUID[i]) {
+                    refus++;
+                }
+            }
+            if (refus == 0) {// UID accepté
+                // on allume la LED verte pendant trois secondes
+                digitalWrite(pinLEDVerte, HIGH);
+                tone(buzz,523,50);
+                delay(50);
+                tone(buzz, 783, 50);
+                delay(50);
+                tone(buzz, 1046, 50);
+                delay(50);
+                tone(buzz, 1568, 50);
+                delay(50);
+                tone(buzz, 2093, 70);
+                delay(250);
+                delay(2550);
+                digitalWrite(pinLEDVerte, LOW);
+            }
+
+            else   {  // UID refusé
+                // on allume la LED rouge pendant trois secondes
+                digitalWrite(pinLEDRouge, HIGH);
+                tone(buzz,370,50);
+                delay(100);
+                tone(buzz, 370, 300);
+                delay(1000);
+                delay(1900);
+                digitalWrite(pinLEDRouge, LOW);
+            }
         }
-      }
-
-      if (refus == 0) // UID accepté
-      {
-        // on allume la LED verte pendant trois secondes
-        digitalWrite(pinLEDVerte, HIGH);
-        tone(buzz,523,50);
-        delay(50);
-        tone(buzz, 783, 50);
-        delay(50);
-        tone(buzz, 1046, 50);
-        delay(50);
-        tone(buzz, 1568, 50);
-        delay(50);
-        tone(buzz, 2093, 70);
-        delay(250);
-        delay(2550);
-        digitalWrite(pinLEDVerte, LOW);
-      }
-
-      else   {  // UID refusé
-        // on allume la LED rouge pendant trois secondes
-        digitalWrite(pinLEDRouge, HIGH);
-        tone(buzz,370,50);
-        delay(100);
-        tone(buzz, 370, 300);
-        delay(1000);
-        delay(1900);
-        digitalWrite(pinLEDRouge, LOW);
-      }
     }
-  }
+    delay(100);
 }
