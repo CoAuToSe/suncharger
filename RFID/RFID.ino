@@ -19,9 +19,10 @@ const byte bonUID[4] = {245,100,55,70};
 byte buzz = 8;
 const int pinLEDVerte = 12; // LED verte
 const int pinLEDRouge = 11; // LED rouge
+
+// setup module RFID
 const int pinRST = 5;  // pin RST du module RC522
 const int pinSDA = 53; // pin SDA du module RC522
-
 MFRC522 rfid(pinSDA, pinRST);
 
 void setup() {
