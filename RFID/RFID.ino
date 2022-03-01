@@ -20,7 +20,7 @@ byte buzz = 8;
 const int pinLEDVerte = 12; // LED verte
 const int pinLEDRouge = 11; // LED rouge
 
-// setup module RFID
+// setup des pin.s de la carte pour lea connexion avec le module RFID
 const int pinRST = 5;  // pin RST du module RC522
 const int pinSDA = 53; // pin SDA du module RC522
 MFRC522 rfid(pinSDA, pinRST);
@@ -31,7 +31,7 @@ void setup() {
     rfid.PCD_Init();
     pinMode(pinLEDVerte, OUTPUT);
     pinMode(pinLEDRouge, OUTPUT);
-    pinMode(8, OUTPUT);
+    pinMode(buzz, OUTPUT);
 }
 
 void loop() {
