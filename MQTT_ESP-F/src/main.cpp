@@ -132,12 +132,15 @@ void setup() {
     
     // Configuration de la communication série à 115200 Mbps
     Serial.begin(115200);
+    
+    Serial.println();
     // Serial.println();
     // Serial.begin(9600);
     if (! ina219.begin()) {
         Serial.println("Erreur pour trouver le INA219");
         while (1) { delay(10); }
     }
+    
     Serial.print("Courant"); 
     Serial.print("\t");
 
@@ -188,7 +191,13 @@ void send(float &my_value, const char * my_topic ) {
     client.publish(outTopic, msg);
 }
 
+const char* hoster = mqtt_server;
+// const char* hoster = "cold-turtle-14.hooks.n8n.cloud/webhook/innov/id=WDXFGHK";
+
 void loop() {
+
+    
+    WiFiClient client_local;
 
     // Si perte de connexion, reconnexion!
     if (!client.connected()) {
@@ -234,149 +243,183 @@ void loop() {
     }
 
     int refus = 0; // quand cette variable n'est pas nulle, c'est que le code est refusé
-    if (rfid.PICC_IsNewCardPresent()) { // on a dédecté un tag
-        if (rfid.PICC_ReadCardSerial()) { // on a lu avec succès son contenu
-            for (byte i = 0; i < rfid.uid.size; i++) { // comparaison avec le bon UID
-                Serial.print(rfid.uid.uidByte[i], HEX);
-                if (rfid.uid.uidByte[i] != bonUID[i]) {
-                    refus++;
-                }
-            }
-            if (refus == 0) {// UID accepté
-                // on allume la LED verte pendant trois secondes
-                // digitalWrite(pinLEDVerte, HIGH);
-                // tone(buzz,523,50);
-                // delay(50);
-                // tone(buzz, 783, 50);
-                // delay(50);
-                // tone(buzz, 1046, 50);
-                // delay(50);
-                // tone(buzz, 1568, 50);
-                // delay(50);
-                // tone(buzz, 2093, 70);
-                // delay(250);
-                // delay(2550);
-                // digitalWrite(pinLEDVerte, LOW);
+    u8 myRFID[4] = {1, 0, 72, 0};
+    for (u8 i = 0; i < 4; i ++) {Serial.print(myRFID[i]);Serial.print(" ");}
+    Serial.println();
+    // if (rfid.PICC_IsNewCardPresent()) { // on a dédecté un tag
+    //     if (rfid.PICC_ReadCardSerial()) { // on a lu avec succès son contenu
+    //         for (byte i = 0; i < rfid.uid.size; i++) { // comparaison avec le bon UID
+    //             Serial.print(rfid.uid.uidByte[i], HEX);
+    //             myRFID[i] = rfid.uid.uidByte[i];
+    //             if (rfid.uid.uidByte[i] != bonUID[i]) {
+    //                 refus++;
+    //                 // myRFID 
+    //             }
+    //         }
+            for (u8 i = 0; i < 4; i ++) {Serial.print(myRFID[i]);Serial.print(" ");}
+            Serial.println();
 
-                Serial.println("got it");
-            }
+            Serial.printf("\n[Connecting to %s ... ", hoster);
+            if (client_local.connect(hoster, 80)) {
+                Serial.println("connected]");
 
-            else {  // UID refusé
-                // on allume la LED rouge pendant trois secondes
-                // digitalWrite(pinLEDRouge, HIGH);
-                // tone(buzz,370,50);
-                // delay(100);
-                // tone(buzz, 370, 300);
-                // delay(1000);
-                // delay(1900);
-                // digitalWrite(pinLEDRouge, LOW);
+                Serial.println("[Sending a request]");
+                // Serial.print(String("GET /") + " HTTP/1.1\r\n" +
+                //             "Host: " + hoster + "\r\n" +
+                //             "Connection: close\r\n" +
+                //             "\r\n"
+                //             );
                 
-                Serial.println("not it");
+                Serial.println(String("GET / HTTP/1.1\r\nHost: 192.168.1.203\r\nUser-Agent: PostmanRuntime/7.29.0\r\nAccept: */*\r\nContent-Length: 0\r\nAccept-Encoding: gzip, deflate, br\r\nConnection: keep-alive\r\n\r\n"));
+                client_local.print(String("GET / HTTP/1.1\r\nHost: 192.168.1.203\r\nUser-Agent: PostmanRuntime/7.29.0\r\nAccept: */*\r\nContent-Length: 0\r\nAccept-Encoding: gzip, deflate, br\r\nConnection: keep-alive\r\n\r\n")
+                //  + " HTTP/1.1\r\n" +
+                            // "Host: " + hoster + "/index.php\r\n" +
+                            // "Host: 192.168.1.203\r\n" +
+                            // "Connection: keep-alive\r\n" +
+                            // "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\r\n" +
+                            // "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\r\n" + 
+                            // "Accept-Encoding: gzip, deflate, br\r\n" +
+                            // "Accept-Language: en-US,en;q=0.9\r\n" +
+                            // "\r\n"
+                            );
+
+                Serial.println("[Response:]");
+                while (client_local.connected() || client_local.available()) {
+                    if (client_local.available()) {
+                        String line = client_local.readStringUntil('\n');
+                        Serial.println(line);
+                    }
+                }
+                client_local.stop();
+                Serial.println("\n[Disconnected]");
+            } else {
+                Serial.println("connection failed!]");
+                client_local.stop();
             }
-        }
-    }
-    delay(100);
+
+        //     if (refus == 0) {// UID accepté
+        //         // on allume la LED verte pendant trois secondes
+        //         // digitalWrite(pinLEDVerte, HIGH);
+        //         // tone(buzz,523,50);
+        //         // delay(50);
+        //         // tone(buzz, 783, 50);
+        //         // delay(50);
+        //         // tone(buzz, 1046, 50);
+        //         // delay(50);
+        //         // tone(buzz, 1568, 50);
+        //         // delay(50);
+        //         // tone(buzz, 2093, 70);
+        //         // delay(250);
+        //         // delay(2550);
+        //         // digitalWrite(pinLEDVerte, LOW);
+
+        //         Serial.println("got it");
+        //     }
+
+        //     else {  // UID refusé
+        //         // on allume la LED rouge pendant trois secondes
+        //         // digitalWrite(pinLEDRouge, HIGH);
+        //         // tone(buzz,370,50);
+        //         // delay(100);
+        //         // tone(buzz, 370, 300);
+        //         // delay(1000);
+        //         // delay(1900);
+        //         // digitalWrite(pinLEDRouge, LOW);
+                
+        //         Serial.println("not it");
+        //     }
+        // }
+    // }
+    
+    // WiFiClient client_local;
+
+    // const char* hoster = "cold-turtle-14.hooks.n8n.cloud/webhook/innov/id=WDXFGHK";
+    // const char* hoster = mqtt_server;
+    // Serial.printf("\n[Connecting to %s ... ", hoster);
+    // if (client_local.connect(hoster, 80)) {
+    //     Serial.println("connected]");
+
+    //     Serial.println("[Sending a request]");
+    //     client_local.print(String("GET /") + " HTTP/1.1\r\n" +
+    //                 "Host: " + hoster + "\r\n" +
+    //                 "Connection: close\r\n" +
+    //                 "\r\n"
+    //                 );
+
+    //     Serial.println("[Response:]");
+    //     while (client_local.connected() || client_local.available()) {
+    //         if (client_local.available()) {
+    //             String line = client_local.readStringUntil('\n');
+    //             Serial.println(line);
+    //         }
+    //     }
+    //     client_local.stop();
+    //     Serial.println("\n[Disconnected]");
+    // } else {
+    //     Serial.println("connection failed!]");
+    //     client_local.stop();
+    // }
+    delay(1000);
+    // delay(100);
 }
 
 
-// #include "Wire.h"
-// #include "Adafruit_INA219.h"
-// Adafruit_INA219 ina219;
+// #include <ESP8266WiFi.h>
 
-// void setup() {
-//     Serial.println();
-//     Serial.begin(9600);
-//     if (! ina219.begin()) {
-//         Serial.println("Erreur pour trouver le INA219");
-//         while (1) { delay(10); }
+// const char* ssid = "********";
+// const char* password = "********";
+
+// const char* host = "www.example.com";
+
+
+// void setup()
+// {
+//   Serial.begin(115200);
+//   Serial.println();
+
+//   Serial.printf("Connecting to %s ", ssid);
+//   WiFi.begin(ssid, password);
+//   while (WiFi.status() != WL_CONNECTED)
+//   {
+//     delay(500);
+//     Serial.print(".");
+//   }
+//   Serial.println(" connected");
+// }
+
+
+// void loop()
+// {
+//   WiFiClient client;
+
+//   Serial.printf("\n[Connecting to %s ... ", host);
+//   if (client.connect(host, 80))
+//   {
+//     Serial.println("connected]");
+
+//     Serial.println("[Sending a request]");
+//     client.print(String("GET /") + " HTTP/1.1\r\n" +
+//                  "Host: " + host + "\r\n" +
+//                  "Connection: close\r\n" +
+//                  "\r\n"
+//                 );
+
+//     Serial.println("[Response:]");
+//     while (client.connected() || client.available())
+//     {
+//       if (client.available())
+//       {
+//         String line = client.readStringUntil('\n');
+//         Serial.println(line);
+//       }
 //     }
-//     Serial.print("Courant"); 
-//     Serial.print("\t");
-// }
-
-// void loop() {
-//     float current_mA = 0;
-//     current_mA = ina219.getCurrent_mA();
-//     Serial.print(current_mA); 
-//     Serial.print("\t");
-//     delay(1000);
-// }
-
-/*
- * Typical pin layout used:
- * -----------------------------------------------------------------------------------------
- *             MFRC522      Arduino       Arduino   Arduino    Arduino          Arduino
- *             Reader/PCD   Uno/101       Mega      Nano v3    Leonardo/Micro   Pro Micro
- * Signal      Pin          Pin           Pin       Pin        Pin              Pin
- * -----------------------------------------------------------------------------------------
- * RST/Reset   RST          9             5         D9         RESET/ICSP-5     RST
- * SPI SS      SDA(SS)      10            53        D10        10               10
- * SPI MOSI    MOSI         11 / ICSP-4   51        D11        ICSP-4           16
- * SPI MISO    MISO         12 / ICSP-1   50        D12        ICSP-1           14
- * SPI SCK     SCK          13 / ICSP-3   52        D13        ICSP-3           15
- */
-
-// #include <SPI.h>
-// #include <MFRC522.h>
-
-// const byte bonUID[4] = {245,100,55,70};
-// byte buzz = 8;
-// const int pinLEDVerte = 12; // LED verte
-// const int pinLEDRouge = 11; // LED rouge
-
-// // setup des pin.s de la carte pour lea connexion avec le module RFID
-// const int pinRST = 5;  // pin RST du module RC522
-// const int pinSDA = 53; // pin SDA du module RC522
-// MFRC522 rfid(pinSDA, pinRST);
-
-// void setup() {
-//     Serial.begin(9600);
-//     SPI.begin();
-//     rfid.PCD_Init();
-//     pinMode(pinLEDVerte, OUTPUT);
-//     pinMode(pinLEDRouge, OUTPUT);
-//     pinMode(buzz, OUTPUT);
-// }
-
-// void loop() {
-//     int refus = 0; // quand cette variable n'est pas nulle, c'est que le code est refusé
-
-//     if (rfid.PICC_IsNewCardPresent()) { // on a dédecté un tag
-//         if (rfid.PICC_ReadCardSerial()) { // on a lu avec succès son contenu
-//             for (byte i = 0; i < rfid.uid.size; i++) { // comparaison avec le bon UID
-//                 Serial.print(rfid.uid.uidByte[i], HEX);
-//                 if (rfid.uid.uidByte[i] != bonUID[i]) {
-//                     refus++;
-//                 }
-//             }
-//             if (refus == 0) {// UID accepté
-//                 // on allume la LED verte pendant trois secondes
-//                 digitalWrite(pinLEDVerte, HIGH);
-//                 tone(buzz,523,50);
-//                 delay(50);
-//                 tone(buzz, 783, 50);
-//                 delay(50);
-//                 tone(buzz, 1046, 50);
-//                 delay(50);
-//                 tone(buzz, 1568, 50);
-//                 delay(50);
-//                 tone(buzz, 2093, 70);
-//                 delay(250);
-//                 delay(2550);
-//                 digitalWrite(pinLEDVerte, LOW);
-//             }
-
-//             else {  // UID refusé
-//                 // on allume la LED rouge pendant trois secondes
-//                 digitalWrite(pinLEDRouge, HIGH);
-//                 tone(buzz,370,50);
-//                 delay(100);
-//                 tone(buzz, 370, 300);
-//                 delay(1000);
-//                 delay(1900);
-//                 digitalWrite(pinLEDRouge, LOW);
-//             }
-//         }
-//     }
-//     delay(100);
+//     client.stop();
+//     Serial.println("\n[Disconnected]");
+//   }
+//   else
+//   {
+//     Serial.println("connection failed!]");
+//     client.stop();
+//   }
+//   delay(5000);
 // }
