@@ -122,7 +122,7 @@ void reconnect() {
             Serial.println(" try again in 5 seconds");
 
             // Attente de 5 secondes avant une nouvelle tentative
-            delay(5000);
+            // delay(5000);
         }
     // }
 }
@@ -183,48 +183,63 @@ void HTTP_send_connect_and_print() {
     }
 }
 
-void EEPROM_write(float param, int adresse, int id) {
-    //Init Serial USB
-    // Serial.begin(115200);
-    // Serial.println(F("Initialize System"));
-
-    //Init EEPROM
+void EEPROM_write(float param, int adresse) {
+    // Init EEPROM
     EEPROM.begin(EEPROM_SIZE);
 
     //Write data into eeprom
     int write_address = adresse;
-    int boardId = id;
-    EEPROM.put(write_address, boardId);
-    Serial.print("Write Id = ");
-    Serial.println(boardId);
-    Serial.print("Write address = ");
-    Serial.println(write_address);
-    write_address += sizeof(param); //update address value to match 
-    // float param = 26.5;
-    Serial.print("Write param = ");
-    Serial.println(param);
+    Serial.print("WRITE");
+
+    Serial.print(" | size = ");
+    Serial.print(sizeof(param));
+
+    Serial.print(" | address = ");
+    Serial.print(write_address);
+
     EEPROM.put(write_address, param);
+    write_address += sizeof(param);
+
+    Serial.print("..");
+    Serial.print(write_address);
+    
+    Serial.print(" | param = ");
+    Serial.print(param);
+    Serial.println();
+
     EEPROM.commit();
     EEPROM.end();
 }
-float EEPROM_read(int adresse) {
+// #define swap(type, foo, bar) ({type tmp; tmp=foo; foo=bar; bar=tmp;})
+// #define EEPROM_READ(address, type) (type tmp; tmp=foo; foo=bar; bar=tmp;})
+#define EEPROM_READ(address, type) ({type tmp; EEPROM_read(address, sizeof(tmp)) ; })
+float EEPROM_read(int adresse, int sizeofparam) {
     //Init EEPROM
     EEPROM.begin(EEPROM_SIZE);
 
     //Read data from eeprom
     int read_address = adresse;
-    int readId;
-    EEPROM.get(read_address, readId);
-    Serial.print("Read Id = ");
-    Serial.println(readId);
-    read_address += sizeof(readId); //update address value
-    Serial.print("Read address = ");
-    Serial.println(read_address);
+    Serial.print("READ ");
+    
+    Serial.print(" | size = ");
+    Serial.print(sizeofparam);
+
+    Serial.print(" | address = ");
+    Serial.print(read_address);
+
     float readParam;
     EEPROM.get(read_address, readParam); //readParam=EEPROM.readFloat(address);
-    Serial.print("Read param = ");
-    Serial.println(readParam);
+    
+    Serial.print("..");
+    read_address += sizeof(readParam); //update address value
+    Serial.print(read_address);
+    
+    Serial.print(" | val = ");
+    Serial.print(readParam);
+
+    Serial.println();
     EEPROM.end();
+
     return readParam;
 }
 
@@ -287,7 +302,15 @@ void setup() {
 
     // Déclaration de la fonction de récupération des données reçues du broker MQTT
     client.setCallback(callback);
-    // EEPROM_write(26.5, 0, 18);
+    
+    EEPROM_write(1.1, 0);
+    EEPROM_write(2.2, 4);
+    EEPROM_write(3.3, 8);
+    EEPROM_write(4.4, 12);
+    EEPROM_READ(0, float);
+    EEPROM_READ(4, float);
+    EEPROM_READ(8, float);
+    EEPROM_READ(12, float);
 }
 
 void loop() {
@@ -307,9 +330,15 @@ void loop() {
         RFID_read_print_and_recognize();
         HTTP_send_connect_and_print();
         
-        float test = EEPROM_read(0);
-        
-        EEPROM_write(test+1, 0);
+        float test1 = EEPROM_READ(0, float);
+        float test2 = EEPROM_READ(4, float);
+        float test3 = EEPROM_READ(8, float);
+        float test4 = EEPROM_READ(12, float);
+        Serial.println();
+        EEPROM_write(test1+1, 0);
+        EEPROM_write(test2+2, 4);
+        EEPROM_write(test3+3, 8);
+        EEPROM_write(test4+4, 12);
     }
     delay(1000);
 }
