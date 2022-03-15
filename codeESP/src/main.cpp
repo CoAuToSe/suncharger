@@ -70,7 +70,7 @@ void setup_wifi() {
     Serial.println("WiFi connected");
 
     // Affichage de l'adresse IP du module
-    Serial.println("IP address: ");
+    Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 }
 
@@ -136,10 +136,9 @@ void setup_pins() {
     // pinMode(buzz, OUTPUT);
 }
 
-
 void send_MQTT(float &my_value, const char * my_topic ) {
     snprintf(msg, MSG_BUFFER_SIZE,"%f", my_value);
-    Serial.print("[MQTT]Publish message: ");
+    Serial.print("[MQTT] Publish message: ");
     Serial.print(msg);
     Serial.print(" topic: ");
     Serial.println(my_topic);
@@ -151,8 +150,7 @@ void send_MQTT(float &my_value, const char * my_topic ) {
     // Envoi de la donnée
     client.publish(outTopic, msg);
 }
-
-    
+   
 void HTTP_send_connect_and_print() {
     
     WiFiClient client_local;
@@ -210,8 +208,7 @@ void EEPROM_write(float param, int adresse) {
     EEPROM.commit();
     EEPROM.end();
 }
-// #define swap(type, foo, bar) ({type tmp; tmp=foo; foo=bar; bar=tmp;})
-// #define EEPROM_READ(address, type) (type tmp; tmp=foo; foo=bar; bar=tmp;})
+
 #define EEPROM_READ(address, type) ({type tmp; EEPROM_read(address, sizeof(tmp)) ; })
 float EEPROM_read(int adresse, int sizeofparam) {
     //Init EEPROM
