@@ -95,7 +95,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 /* Fonction de reconnexion au broker MQTT */
 void reconnect() {
     // Tant que le client n'est pas connecté...
-    while (!client.connected()) {
+    // while (!client.connected()) {
         Serial.print("Attempting MQTT connection...");
         
         // Génération d'un identifiant unique
@@ -124,7 +124,7 @@ void reconnect() {
             // Attente de 5 secondes avant une nouvelle tentative
             delay(5000);
         }
-    }
+    // }
 }
 
 void setup_pins() {
@@ -136,35 +136,6 @@ void setup_pins() {
     // pinMode(buzz, OUTPUT);
 }
 
-void setup() {
-    setup_pins();
-
-    // Configuration de la communication série à 115200 Mbps
-    Serial.begin(115200);
-    
-    Serial.println();
-
-    // 
-    if (! ina219.begin()) {
-        Serial.println("Erreur pour trouver le INA219");
-        while (1) { delay(10); }
-    }
-
-    // Connexion au WiFi
-    setup_wifi();
-
-    // Configuration de la connexion au broker MQTT
-    client.setServer(IP_RASPBERRY, 1883);
-
-    // Initialistaion du SPI (dépendances)
-    SPI.begin();
-
-    // Configuration du RFID
-    rfid.PCD_Init();
-
-    // Déclaration de la fonction de récupération des données reçues du broker MQTT
-    client.setCallback(callback);
-}
 
 void send_MQTT(float &my_value, const char * my_topic ) {
     snprintf(msg, MSG_BUFFER_SIZE,"%f", my_value);
@@ -181,29 +152,8 @@ void send_MQTT(float &my_value, const char * my_topic ) {
     client.publish(outTopic, msg);
 }
 
-
-void loop() {
     
-    // Si perte de connexion, reconnexion!
-    if (!client.connected()) { reconnect(); }
-
-    // Appel de fonction pour redonner la main au process de communication MQTT
-    client.loop();
-
-    // Sous programme de test pour un envoi périodique
-    unsigned long now = millis();
-    if (now - lastMsg > 2000) {
-        // Enregistrement de l'action réalisée
-        lastMsg = now;
-        MQTT_communication_info();
-        RFID_read_print_and_recognize();
-        HTTP_send_connect_and_print();
-        EEPROM_use();
-    }
-    delay(1000);
-}
-    
-String HTTP_send_connect_and_print() {
+void HTTP_send_connect_and_print() {
     
     WiFiClient client_local;
     Serial.printf("\n[Connecting to %s ... ", IP_RASPBERRY);
@@ -233,35 +183,49 @@ String HTTP_send_connect_and_print() {
     }
 }
 
-void EEPROM_use() {
+void EEPROM_write(float param, int adresse, int id) {
     //Init Serial USB
-    Serial.begin(115200);
-    Serial.println(F("Initialize System"));
+    // Serial.begin(115200);
+    // Serial.println(F("Initialize System"));
 
     //Init EEPROM
     EEPROM.begin(EEPROM_SIZE);
 
     //Write data into eeprom
-    int address = 0;
-    int boardId = 18;
-    EEPROM.put(address, boardId);
-    address += sizeof(boardId); //update address value
-    float param = 26.5;
-    EEPROM.put(address, param);
+    int write_address = adresse;
+    int boardId = id;
+    EEPROM.put(write_address, boardId);
+    Serial.print("Write Id = ");
+    Serial.println(boardId);
+    Serial.print("Write address = ");
+    Serial.println(write_address);
+    write_address += sizeof(param); //update address value to match 
+    // float param = 26.5;
+    Serial.print("Write param = ");
+    Serial.println(param);
+    EEPROM.put(write_address, param);
     EEPROM.commit();
+    EEPROM.end();
+}
+float EEPROM_read(int adresse) {
+    //Init EEPROM
+    EEPROM.begin(EEPROM_SIZE);
 
     //Read data from eeprom
-    address = 0;
+    int read_address = adresse;
     int readId;
-    EEPROM.get(address, readId);
+    EEPROM.get(read_address, readId);
     Serial.print("Read Id = ");
     Serial.println(readId);
-    address += sizeof(readId); //update address value
+    read_address += sizeof(readId); //update address value
+    Serial.print("Read address = ");
+    Serial.println(read_address);
     float readParam;
-    EEPROM.get(address, readParam); //readParam=EEPROM.readFloat(address);
+    EEPROM.get(read_address, readParam); //readParam=EEPROM.readFloat(address);
     Serial.print("Read param = ");
     Serial.println(readParam);
     EEPROM.end();
+    return readParam;
 }
 
 bool RFID_read_print_and_recognize() {
@@ -292,4 +256,60 @@ void MQTT_communication_info() {
     send_MQTT(current_mA, "ESME/COMPTEUR_AMP");
     send_MQTT(voltage_V, "ESME/COMPTEUR_VOL");
     send_MQTT(shunt_voltage_mV, "ESME/COMPTEUR_SmV");
+}
+
+
+void setup() {
+    // assignation des pins de l'ESP
+    setup_pins();
+
+    // Configuration de la communication série à 115200 Mbps
+    Serial.begin(115200);
+    Serial.println();
+
+    // initialisation de la communication avec l'INA219
+    if (! ina219.begin()) {
+        Serial.println("Erreur pour trouver le INA219");
+        while (1) { delay(10); }
+    }
+
+    // Connexion au WiFi
+    setup_wifi();
+
+    // Configuration de la connexion au broker MQTT
+    client.setServer(IP_RASPBERRY, 1883);
+
+    // Initialistaion du SPI (dépendances)
+    SPI.begin();
+
+    // Configuration du RFID
+    rfid.PCD_Init();
+
+    // Déclaration de la fonction de récupération des données reçues du broker MQTT
+    client.setCallback(callback);
+    // EEPROM_write(26.5, 0, 18);
+}
+
+void loop() {
+    
+    // Si perte de connexion, reconnexion!
+    if (!client.connected()) { reconnect(); }
+
+    // Appel de fonction pour redonner la main au process de communication MQTT
+    client.loop();
+
+    // Sous programme de test pour un envoi périodique
+    unsigned long now = millis();
+    if (now - lastMsg > 2000) {
+        // Enregistrement de l'action réalisée
+        lastMsg = now;
+        MQTT_communication_info();
+        RFID_read_print_and_recognize();
+        HTTP_send_connect_and_print();
+        
+        float test = EEPROM_read(0);
+        
+        EEPROM_write(test+1, 0);
+    }
+    delay(1000);
 }
