@@ -6,12 +6,13 @@
 
 #include <SPI.h>
 #include <MFRC522.h>
-#include <EEPROM.h>
+#include <EEPROM.h> //https://github.com/esp8266/Arduino/blob/master/libraries/EEPROM/EEPROM.h
 
 #include "Wire.h"
 #include "Adafruit_INA219.h"
 Adafruit_INA219 ina219;
 
+#define EEPROM_SIZE 2<<7
 #define PROJECT_NAME "TEST_MQTT"                   // nom du projet
 #define SSID "ESME-FABLAB"                         // indiquer le SSID de votre réseau
 #define PASSWORD "ESME-FABLAB"                     // indiquer le mdp de votre réseau
@@ -126,23 +127,28 @@ void reconnect() {
     }
 }
 
-void setup() {
+void setup_pins() {
     // Paramètrage de la pin BUILTIN_LED en sortie
     pinMode(LED_BUILTIN, OUTPUT);
-    
+
+    // pinMode(pinLEDVerte, OUTPUT);
+    // pinMode(pinLEDRouge, OUTPUT);
+    // pinMode(buzz, OUTPUT);
+}
+
+void setup() {
+    setup_pins();
+
     // Configuration de la communication série à 115200 Mbps
     Serial.begin(115200);
     
     Serial.println();
-    // Serial.println();
-    // Serial.begin(9600);
+
+    // 
     if (! ina219.begin()) {
         Serial.println("Erreur pour trouver le INA219");
         while (1) { delay(10); }
     }
-    
-    Serial.print("Courant"); 
-    Serial.print("\t");
 
     // Connexion au WiFi
     setup_wifi();
@@ -150,11 +156,11 @@ void setup() {
     // Configuration de la connexion au broker MQTT
     client.setServer(IP_RASPBERRY, 1883);
 
+    // Initialistaion du SPI (dépendances)
     SPI.begin();
+
+    // Configuration du RFID
     rfid.PCD_Init();
-    // pinMode(pinLEDVerte, OUTPUT);
-    // pinMode(pinLEDRouge, OUTPUT);
-    // pinMode(buzz, OUTPUT);
 
     // Déclaration de la fonction de récupération des données reçues du broker MQTT
     client.setCallback(callback);
@@ -178,8 +184,6 @@ void send_MQTT(float &my_value, const char * my_topic ) {
 
 void loop() {
     
-    WiFiClient client_local;
-
     // Si perte de connexion, reconnexion!
     if (!client.connected()) { reconnect(); }
 
@@ -191,33 +195,17 @@ void loop() {
     if (now - lastMsg > 2000) {
         // Enregistrement de l'action réalisée
         lastMsg = now;
-
-        // Construction du message à envoyer
-        float current_mA = 0;
-        float voltage_V = 0;
-        float shunt_voltage_mV = 0;
-        current_mA = ina219.getCurrent_mA();
-        voltage_V = ina219.getBusVoltage_V();
-        shunt_voltage_mV = ina219.getShuntVoltage_mV();
-        // Serial.println(current_mA);
-        // Serial.println(voltage_V);
-        // Serial.println(shunt_voltage_mV);
-        Serial.println();
-        send_MQTT(current_mA, "ESME/COMPTEUR_AMP");
-        send_MQTT(voltage_V, "ESME/COMPTEUR_VOL");
-        send_MQTT(shunt_voltage_mV, "ESME/COMPTEUR_SmV");
+        MQTT_communication_info();
+        RFID_read_print_and_recognize();
+        HTTP_send_connect_and_print();
+        EEPROM_use();
     }
-
-    u8 currentRFID[4] = {0, 0, 0, 0};
-    Serial.println();
-    if (rfid.PICC_IsNewCardPresent()) { // on a dédecté un tag
-        if (rfid.PICC_ReadCardSerial()) { // on a lu avec succès son contenu
-            for (u8 i = 0; i < 4; i ++) { currentRFID[i] = rfid.uid.uidByte[i]; }
-            for (u8 i = 0; i < 4; i ++) { Serial.print(currentRFID[i]); Serial.print(" "); }
-            Serial.println();
-        }
-    }
-
+    delay(1000);
+}
+    
+String HTTP_send_connect_and_print() {
+    
+    WiFiClient client_local;
     Serial.printf("\n[Connecting to %s ... ", IP_RASPBERRY);
     if (client_local.connect(IP_RASPBERRY, PORT_RASPBERRY)) {
         Serial.println("connected]");
@@ -244,4 +232,64 @@ void loop() {
         client_local.stop();
     }
 }
-    
+
+void EEPROM_use() {
+    //Init Serial USB
+    Serial.begin(115200);
+    Serial.println(F("Initialize System"));
+
+    //Init EEPROM
+    EEPROM.begin(EEPROM_SIZE);
+
+    //Write data into eeprom
+    int address = 0;
+    int boardId = 18;
+    EEPROM.put(address, boardId);
+    address += sizeof(boardId); //update address value
+    float param = 26.5;
+    EEPROM.put(address, param);
+    EEPROM.commit();
+
+    //Read data from eeprom
+    address = 0;
+    int readId;
+    EEPROM.get(address, readId);
+    Serial.print("Read Id = ");
+    Serial.println(readId);
+    address += sizeof(readId); //update address value
+    float readParam;
+    EEPROM.get(address, readParam); //readParam=EEPROM.readFloat(address);
+    Serial.print("Read param = ");
+    Serial.println(readParam);
+    EEPROM.end();
+}
+
+bool RFID_read_print_and_recognize() {
+    u8 currentRFID[4] = {0, 0, 0, 0};
+    Serial.println();
+    if (rfid.PICC_IsNewCardPresent()) { // on a dédecté un tag
+        if (rfid.PICC_ReadCardSerial()) { // on a lu avec succès son contenu
+            for (u8 i = 0; i < 4; i ++) { currentRFID[i] = rfid.uid.uidByte[i]; }
+            for (u8 i = 0; i < 4; i ++) { Serial.print(currentRFID[i]); Serial.print(" "); }
+            Serial.println();
+        }
+    }
+    return false;
+}
+
+void MQTT_communication_info() {
+    // Construction du message à envoyer
+    float current_mA = 0;
+    float voltage_V = 0;
+    float shunt_voltage_mV = 0;
+    current_mA = ina219.getCurrent_mA();
+    voltage_V = ina219.getBusVoltage_V();
+    shunt_voltage_mV = ina219.getShuntVoltage_mV();
+    // Serial.println(current_mA);
+    // Serial.println(voltage_V);
+    // Serial.println(shunt_voltage_mV);
+    Serial.println();
+    send_MQTT(current_mA, "ESME/COMPTEUR_AMP");
+    send_MQTT(voltage_V, "ESME/COMPTEUR_VOL");
+    send_MQTT(shunt_voltage_mV, "ESME/COMPTEUR_SmV");
+}
