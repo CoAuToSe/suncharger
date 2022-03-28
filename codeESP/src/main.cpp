@@ -30,15 +30,15 @@ char inTopic[TPC_NAME_SIZE];
 char outTopic[TPC_NAME_SIZE];
 
 /* RFID */
-const byte bonUID[NOMBRE_CASIER][4] = {245,100,55,70};
+const byte bonUID[NOMBRE_CASIER][4] = {{245,100,55,70}};
 
 /* setup des pin.s de la carte pour la connexion avec le module RFID */
-const int pinRST = D3; // pin RST du module RC522
-const int pinSS = D8; // pin SS du module RC522
-const int pinMOSI = D7; // pin MOSI du module RC522
-const int pinMISO = D6; // pin MISO du module RC522
-const int pinSCK = D5; // pin SCK du module RC522
-const int pinSDA = pinSS; // pin SDA du module RC522
+const int pinRST    = D3; // pin RST du module RC522
+const int pinSS     = D8; // pin SS du module RC522
+const int pinMOSI   = D7; // pin MOSI du module RC522
+const int pinMISO   = D6; // pin MISO du module RC522
+const int pinSCK    = D5; // pin SCK du module RC522
+const int pinSDA    = pinSS; // pin SDA du module RC522
 MFRC522 rfid(pinSDA, pinRST);
 
 /* VARIABLES TEMPORAIRES */
@@ -151,7 +151,7 @@ void send_MQTT(float &my_value, const char * my_topic ) {
     client.publish(outTopic, msg);
 }
    
-void HTTP_send_connect_and_print() {
+void HTTP_connect_send_and_print() {
     
     WiFiClient client_local;
     Serial.printf("\n[Connecting to %s ... ", IP_RASPBERRY);
@@ -181,7 +181,7 @@ void HTTP_send_connect_and_print() {
     }
 }
 
-void EEPROM_write(float param, int adresse) {
+void EEPROM_write(int adresse, float param) {
     // Init EEPROM
     EEPROM.begin(EEPROM_SIZE);
 
@@ -209,8 +209,8 @@ void EEPROM_write(float param, int adresse) {
     EEPROM.end();
 }
 
-#define EEPROM_READ(address, type) ({type tmp; EEPROM_read(address, sizeof(tmp)) ; })
-float EEPROM_read(int adresse, int sizeofparam) {
+#define EEPROM_READ(address, type) ({type tmp; _EEPROM_read(address, sizeof(tmp)) ; })
+float _EEPROM_read(int adresse, int sizeofparam) {
     //Init EEPROM
     EEPROM.begin(EEPROM_SIZE);
 
@@ -300,10 +300,10 @@ void setup() {
     // Déclaration de la fonction de récupération des données reçues du broker MQTT
     client.setCallback(callback);
     
-    EEPROM_write(1.1, 0);
-    EEPROM_write(2.2, 4);
-    EEPROM_write(3.3, 8);
-    EEPROM_write(4.4, 12);
+    EEPROM_write(0, 1.1);
+    EEPROM_write(4, 2.2);
+    EEPROM_write(8, 3.3);
+    EEPROM_write(12, 4.4);
     EEPROM_READ(0, float);
     EEPROM_READ(4, float);
     EEPROM_READ(8, float);
@@ -325,17 +325,124 @@ void loop() {
         lastMsg = now;
         MQTT_communication_info();
         RFID_read_print_and_recognize();
-        HTTP_send_connect_and_print();
+        HTTP_connect_send_and_print();
         
         float test1 = EEPROM_READ(0, float);
         float test2 = EEPROM_READ(4, float);
         float test3 = EEPROM_READ(8, float);
         float test4 = EEPROM_READ(12, float);
         Serial.println();
-        EEPROM_write(test1+1, 0);
-        EEPROM_write(test2+2, 4);
-        EEPROM_write(test3+3, 8);
-        EEPROM_write(test4+4, 12);
+        EEPROM_write(0, test1+1);
+        EEPROM_write(4, test2+2);
+        EEPROM_write(8, test3+3);
+        EEPROM_write(12,test4+4);
     }
     delay(1000);
 }
+
+// #include <SPI.h>
+// #include <MFRC522.h>
+// #include <Adafruit_NeoPixel.h>
+// #ifdef __AVR__
+//   #include <avr/power.h>
+// #endif
+// #define NUM_LEDS 5
+
+// const byte listeUID[4] = {245,100,55,70}; // LISTE DES BONS ID RFID
+// int casiers_utilises[4] = {0,0,0,0}; // CASIERS UTILISÉS
+
+// //byte buzz = 4; // BUZZER
+
+// const int pinLEDrgb = D4; // RUBAN LED
+// Adafruit_NeoPixel pixels(NUM_LEDS, pinLEDrgb, NEO_GRB + NEO_KHZ800);
+
+// const int pinRST = 3; // pin RST du module RC522
+// const int pinSDA = 8; // pin SDA du module RC522
+// MFRC522 rfid(pinSDA, pinRST);
+
+// //const int relai1 = SD1; // RELAIS DES SERRURES
+// //const int relai2 = SD2;
+// //const int relai3 = SD3;
+// //const int relai4 = SD0;
+
+
+// void setup() {
+  
+//   Serial.begin(9600);
+//   SPI.begin();
+//   rfid.PCD_Init();
+
+//   #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
+//   clock_prescale_set(clock_div_1);
+//   #endif
+//   pixels.begin();
+  
+//   pinMode(pinLEDrgb, OUTPUT);
+// //   pinMode(buzz, OUTPUT);
+// //  pinMode(relai1, OUTPUT);
+// //  pinMode(relai2, OUTPUT);
+// //  pinMode(relai3, OUTPUT);
+// //  pinMode(relai4, OUTPUT); 
+
+// }
+
+// void loop() {
+  
+//   int refus = 0; // quand cette variable n'est pas nulle, c'est que le code RFID est refusé
+
+//   if (rfid.PICC_IsNewCardPresent())  // on a dédecté un tag
+//   {
+//     if (rfid.PICC_ReadCardSerial())  // on a lu avec succès son contenu
+//     {
+//       for (byte i = 0; i < rfid.uid.size; i++) // comparaison avec le bon UID
+//       {
+//         Serial.print(rfid.uid.uidByte[i], HEX);
+//         if (rfid.uid.uidByte[i] != listeUID[i]) {
+//           refus++;
+//         }
+//       }
+
+//       if (refus == 0) // UID accepté
+//       {
+//         bool n = false;
+        
+//         for (byte j = 0; j < 4; j++){
+          
+//           if (casiers_utilises[j]==0){ // UN CASIER EST LIBRE
+//             n = true;
+//             casiers_utilises[j]==1;
+//             pixels.setPixelColor(5, pixels.Color(0, 150, 0));
+//             pixels.setPixelColor(j, pixels.Color(0, 150, 0));
+//             pixels.show();
+// //            ouverture_casier(j);
+//             // tone(buzz,523,50);
+//             // delay(50);
+//             // tone(buzz, 783, 50);
+//             // delay(50);
+//             // tone(buzz, 1046, 50);
+//             // delay(50);
+//             // tone(buzz, 1568, 50);
+//             // delay(50);
+//             // tone(buzz, 2093, 70);
+//             delay(450);
+//             pixels.clear();
+//             pixels.show();
+            
+//           }
+//         }
+
+//         if ( not n ){
+//           pixels.setPixelColor(5, pixels.Color(150, 0, 0));
+//           pixels.show();
+//         //   tone(buzz,370,50);
+//         //   delay(100);
+//         //   tone(buzz, 370, 300);
+//           delay(2900);
+//           pixels.clear();
+//           pixels.show();
+//         }
+        
+//        }
+//       }
+//      }
+//     }
