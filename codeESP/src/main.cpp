@@ -332,6 +332,10 @@ void loop() {
         MQTT_communication_info();
         RFID_read_print_and_recognize();
         HTTP_connect_send_and_print("id=hello");
+        // WDXFGHKML
+        HTTP_connect_send_and_print("id=WDXFGHKML");
+        // WDXFGHKM
+        HTTP_connect_send_and_print("id=WDXFGHKM");
         
         // float test1 = EEPROM_READ(0, float);
         // float test2 = EEPROM_READ(4, float);
