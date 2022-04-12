@@ -32,7 +32,6 @@
 
 #define SS_PIN D8
 #define RST_PIN D3
-
 #define NUM_LEDS 5
 
 byte * Wheel(byte WheelPos) {
@@ -59,12 +58,12 @@ byte * Wheel(byte WheelPos) {
 
 const byte listeUID[4] = {245,100,55,70};
 //const int buzz = D0;
-//const int pinLEDrgb = D4;
-const int relai = D4; 
+const int pinLEDrgb = D4;
+const int relai = 10; 
 
 bool casier = true;
 
-//Adafruit_NeoPixel pixels(NUM_LEDS, pinLEDrgb, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels(NUM_LEDS, pinLEDrgb, NEO_GRB + NEO_KHZ800);
 
 MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
 
@@ -94,11 +93,11 @@ void rainbowCycle(int SpeedDelay) {
   for(j=0; j<151*5; j++) { // 5 cycles of all colors on wheel
     for(i=0; i< NUM_LEDS; i++) {
       c=Wheel(((i * 151 / NUM_LEDS) + j) & 150);
-      //pixels.setPixelColor(i, pixels.Color(*c, *(c+1), *(c+2)));
+      pixels.setPixelColor(i, pixels.Color(*c, *(c+1), *(c+2)));
     }
-    //pixels.show();
+    pixels.show();
     delay(SpeedDelay);
-    //pixels.clear();
+    pixels.clear();
   }
 }
 
@@ -113,34 +112,36 @@ void setup()
     key.keyByte[i] = 0xFF;
    }
   
-  //pinMode(pinLEDrgb, OUTPUT);
+  pinMode(pinLEDrgb, OUTPUT);
   // pinMode(buzz, OUTPUT);
   pinMode(relai, OUTPUT);
 
-  //pixels.begin();
-  //pixels.show();
-  //pixels.clear();
+  pixels.begin();
+  pixels.show();
+  pixels.clear();
 
   /* ANIMATION LED DÉBUT */
 
-  for(int i = 0;i<NUM_LEDS;i++){
-    // pixels.setPixelColor(i, pixels.Color(0, 150, 0));
-    // pixels.show();
-    delay(300);
-  }
+   for(int i = 0;i<NUM_LEDS;i++){
+     pixels.setPixelColor(i, pixels.Color(0, 150, 0));
+     pixels.show();
+     delay(300);
+   }
 
-  // pixels.clear();
-  // pixels.show();
+   rainbowCycle(5);
+
+   pixels.clear();
+   pixels.show();
 
   delay(200);
 
-  for(int i = 0;i<NUM_LEDS;i++){
-    // pixels.setPixelColor(i, pixels.Color(0, 150, 0));
-    // pixels.show();
-  }
-  delay(200);
-  // pixels.clear();
-  // pixels.show();
+   for(int i = 0;i<NUM_LEDS;i++){
+     pixels.setPixelColor(i, pixels.Color(0, 150, 0));
+     pixels.show();
+   }
+   delay(200);
+   pixels.clear();
+   pixels.show();
 
   // tone(buzz,523,50);
   // delay(50);
@@ -204,17 +205,17 @@ void loop() {
     Serial.println();
 
     // on allume la LED verte
-    // pixels.clear();
-    // pixels.setPixelColor(4, pixels.Color(0, 150, 0));
-    // pixels.show();
+     pixels.clear();
+     pixels.setPixelColor(4, pixels.Color(0, 150, 0));
+     pixels.show();
 
     if (casier){
           
       casier = !casier;
 
-      // pixels.clear();
-      // pixels.setPixelColor(4, pixels.Color(0, 150, 0));
-      // pixels.show();
+      pixels.clear();
+      pixels.setPixelColor(4, pixels.Color(0, 150, 0));
+      pixels.show();
 
       // tone(buzz,523,50);
       // delay(50);
@@ -227,25 +228,25 @@ void loop() {
       // tone(buzz, 2093, 70);
       // delay(250);
       
-      digitalWrite(relai, 1);
-      delay(1000);
-      digitalWrite(relai, 0);
+      digitalWrite(relai, HIGH);
+      delay(2000);
+      digitalWrite(relai, LOW);
 
-      // pixels.clear();
-      // pixels.show();
+      pixels.clear();
+      pixels.show();
     }
         
     else{ // Casiers déjà pris
-          // pixels.clear();
-          // pixels.setPixelColor(4, pixels.Color(150, 0, 0));
-          // pixels.show();
+          pixels.clear();
+          pixels.setPixelColor(4, pixels.Color(150, 0, 0));
+          pixels.show();
           delay(1000);
           // tone(buzz,370,50);
           // delay(100);
           // tone(buzz, 370, 300);
         }
-        // pixels.clear();
-        // pixels.show();
+         pixels.clear();
+         pixels.show();
   }
 
   else {
@@ -255,9 +256,9 @@ void loop() {
     if (not casier){ // Retrait de son téléphone
 
       casier = !casier;
-      // pixels.clear();
-      // pixels.setPixelColor(4, pixels.Color(0, 150, 0));
-      // pixels.show();
+       pixels.clear();
+       pixels.setPixelColor(4, pixels.Color(0, 150, 0));
+       pixels.show();
 
       // tone(buzz,523,50);
       // delay(50);
@@ -270,20 +271,22 @@ void loop() {
       // tone(buzz, 2093, 70);
       // delay(250);
       
-      digitalWrite(relai, 1);
-      delay(1000);
-      digitalWrite(relai, 0);
+      digitalWrite(relai, HIGH);
+      delay(2000);
+      digitalWrite(relai, LOW);
 
-      // pixels.clear();
-      // pixels.show();
+       pixels.clear();
+       pixels.show();
+
+      byte nuidPICC[4] = {0,0,0,0};
     }
 
     else{
       
       casier = !casier;
-      // pixels.clear();
-      // pixels.setPixelColor(4, pixels.Color(0, 150, 0));
-      // pixels.show();
+       pixels.clear();
+       pixels.setPixelColor(4, pixels.Color(0, 150, 0));
+       pixels.show();
 
       // tone(buzz,523,50);
       // delay(50);
@@ -296,12 +299,12 @@ void loop() {
       // tone(buzz, 2093, 70);
       // delay(250);
       
-      digitalWrite(relai, 1);
-      delay(1000);
-      digitalWrite(relai, 0);
+      digitalWrite(relai, HIGH);
+      delay(2000);
+      digitalWrite(relai, LOW);
 
-      // pixels.clear();
-      // pixels.show();
+       pixels.clear();
+       pixels.show();
     }
 
   }
