@@ -13,11 +13,17 @@
 Adafruit_INA219 ina219;
 
 #define EEPROM_SIZE 2<<7
-#define PROJECT_NAME "TEST_MQTT"                   // nom du projet
-#define SSID "ESME-FABLAB"                         // indiquer le SSID de votre réseau
-#define PASSWORD "ESME-FABLAB"                     // indiquer le mdp de votre réseau
-#define IP_RASPBERRY "192.168.1.203"                 // adresse du serveur MQTT auquel vous etes connecté
-#define PORT_RASPBERRY 80
+// /* FabLab Network */
+// #define PROJECT_NAME "TEST_MQTT"                   // nom du projet // à enlever ?
+// #define SSID "ESME-FABLAB"                         // indiquer le SSID de votre réseau
+// #define PASSWORD "ESME-FABLAB"                     // indiquer le mdp de votre réseau
+// #define IP_RASPBERRY "192.168.1.202"               // adresse du serveur MQTT auquel vous etes connecté
+// #define PORT_RASPBERRY 5678
+// /* Raps Access Point Network */
+#define SSID "raspi-webgui"                     // indiquer le SSID de votre réseau
+#define PASSWORD "ChangeMe"                     // indiquer le mdp de votre réseau
+#define IP_RASPBERRY "10.3.141.1"               // adresse du serveur MQTT auquel vous etes connecté
+#define PORT_RASPBERRY 5678
 #define NOMBRE_CASIER 4
 
 /** WIFI **/
@@ -151,7 +157,7 @@ void send_MQTT(float &my_value, const char * my_topic ) {
     client.publish(outTopic, msg);
 }
    
-void HTTP_connect_send_and_print() {
+void HTTP_connect_send_and_print(String parameters) {
     
     WiFiClient client_local;
     Serial.printf("\n[Connecting to %s ... ", IP_RASPBERRY);
@@ -159,10 +165,10 @@ void HTTP_connect_send_and_print() {
         Serial.println("connected]");
 
         Serial.println("[Sending a request]");
-        String message = String("GET /") + " HTTP/1.1\r\n" +
-                         "Host: " + IP_RASPBERRY + "\r\n" +
-                         "Connection: close\r\n" +
-                         "\r\n";
+        String message = String("GET /webhook/innov?") + parameters + " HTTP/1.1\r\n" +
+                        "Host: " + IP_RASPBERRY + "\r\n" +
+                        "Connection: close\r\n" +
+                        "\r\n";
         Serial.println(message);
         client_local.print(message);
 
@@ -300,14 +306,14 @@ void setup() {
     // Déclaration de la fonction de récupération des données reçues du broker MQTT
     client.setCallback(callback);
     
-    EEPROM_write(0, 1.1);
-    EEPROM_write(4, 2.2);
-    EEPROM_write(8, 3.3);
-    EEPROM_write(12, 4.4);
-    EEPROM_READ(0, float);
-    EEPROM_READ(4, float);
-    EEPROM_READ(8, float);
-    EEPROM_READ(12, float);
+    // EEPROM_write(0, 1.1);
+    // EEPROM_write(4, 2.2);
+    // EEPROM_write(8, 3.3);
+    // EEPROM_write(12, 4.4);
+    // EEPROM_READ(0, float);
+    // EEPROM_READ(4, float);
+    // EEPROM_READ(8, float);
+    // EEPROM_READ(12, float);
 }
 
 void loop() {
@@ -325,17 +331,17 @@ void loop() {
         lastMsg = now;
         MQTT_communication_info();
         RFID_read_print_and_recognize();
-        HTTP_connect_send_and_print();
+        HTTP_connect_send_and_print("id=hello");
         
-        float test1 = EEPROM_READ(0, float);
-        float test2 = EEPROM_READ(4, float);
-        float test3 = EEPROM_READ(8, float);
-        float test4 = EEPROM_READ(12, float);
-        Serial.println();
-        EEPROM_write(0, test1+1);
-        EEPROM_write(4, test2+2);
-        EEPROM_write(8, test3+3);
-        EEPROM_write(12,test4+4);
+        // float test1 = EEPROM_READ(0, float);
+        // float test2 = EEPROM_READ(4, float);
+        // float test3 = EEPROM_READ(8, float);
+        // float test4 = EEPROM_READ(12, float);
+        // Serial.println();
+        // EEPROM_write(0, test1+1);
+        // EEPROM_write(4, test2+2);
+        // EEPROM_write(8, test3+3);
+        // EEPROM_write(12,test4+4);
     }
     delay(1000);
 }
