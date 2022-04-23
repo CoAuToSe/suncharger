@@ -29,6 +29,7 @@ Adafruit_INA219 ina219;
 /** WIFI **/
 WiFiClient espClient;
 PubSubClient client(espClient);
+bool wifi_connected = false;
 
 /* MQTT */
 #define TPC_NAME_SIZE 80
@@ -125,7 +126,7 @@ void reconnect() {
             // Tentative échouée
             Serial.print("failed, rc=");
             Serial.print(client.state());
-            Serial.println(" try again in 5 seconds");
+            // Serial.println(" try again in 5 seconds");
 
             // Attente de 5 secondes avant une nouvelle tentative
             // delay(5000);
@@ -157,8 +158,46 @@ void send_MQTT(float &my_value, const char * my_topic ) {
     client.publish(outTopic, msg);
 }
    
-void HTTP_connect_send_and_print(String parameters) {
+bool connect_serveur_HTML(WiFiClient wicli) {
+    // WiFiClient client_local;
+    return wicli.connect(IP_RASPBERRY, PORT_RASPBERRY);
+}
+bool healthy_HTML(WiFiClient wicli) {
+    return wicli.connected();
+}
+
+void disconnecte_HTML(WiFiClient wicli) {
+    wicli.stop();
+}
+
+void HTML_print_send(WiFiClient wicli, String parameters) {
     
+    Serial.println("[Begin of the message]");
+    String message = String("GET /webhook/innov?") + parameters + " HTTP/1.1\r\n" +
+                    "Host: " + IP_RASPBERRY + "\r\n" +
+                    "Connection: close\r\n" +
+                    "\r\n";
+    Serial.println(message);
+    Serial.println("[End of the message]");
+
+    wicli.print(message);
+}
+
+String HTML_print_response(WiFiClient wicli) {
+    Serial.println("[Response:]");
+    String respons = "";
+    while (wicli.connected() || wicli.available()) {
+        if (wicli.available()) {
+            respons += wicli.readStringUntil('\n');// may need to as '\n' at the end
+            // Serial.println(line);
+        }
+    }
+    Serial.println(respons);
+    return respons;
+}
+
+void HTTP_connect_send_and_print(String parameters) {
+
     WiFiClient client_local;
     Serial.printf("\n[Connecting to %s ... ", IP_RASPBERRY);
     if (client_local.connect(IP_RASPBERRY, PORT_RASPBERRY)) {
@@ -298,10 +337,10 @@ void setup() {
     client.setServer(IP_RASPBERRY, 1883);
 
     // Initialistaion du SPI (dépendances)
-    SPI.begin();
+    // SPI.begin();
 
     // Configuration du RFID
-    rfid.PCD_Init();
+    // rfid.PCD_Init();
 
     // Déclaration de la fonction de récupération des données reçues du broker MQTT
     client.setCallback(callback);
@@ -324,19 +363,33 @@ void loop() {
     // Appel de fonction pour redonner la main au process de communication MQTT
     client.loop();
 
+    // init_connect_serveur_HTML();
+    wifi_connected = connect_serveur_HTML(espClient);
     // Sous programme de test pour un envoi périodique
     unsigned long now = millis();
     if (now - lastMsg > 2000) {
+        // check_health_HTML();
+        wifi_connected = healthy_HTML(espClient);
         // Enregistrement de l'action réalisée
         lastMsg = now;
         MQTT_communication_info();
-        RFID_read_print_and_recognize();
-        HTTP_connect_send_and_print("id=hello");
+        // RFID_read_print_and_recognize();
+        if (wifi_connected) {
+            HTML_print_send(espClient, "id=hello");
+            HTML_print_response(espClient);
+            HTML_print_send(espClient, "id=WDXFGHKM");
+            HTML_print_response(espClient);
+            HTML_print_send(espClient, "id=WDXFGHKML");
+            HTML_print_response(espClient);
+        } else {
+            espClient.stop();
+            wifi_connected = connect_serveur_HTML(espClient);
+        }
+        // HTTP_connect_send_and_print("id=hello");
         // WDXFGHKML
-        HTTP_connect_send_and_print("id=WDXFGHKML");
+        // HTTP_connect_send_and_print("id=WDXFGHKML");
         // WDXFGHKM
-        HTTP_connect_send_and_print("id=WDXFGHKM");
-        
+        // HTTP_connect_send_and_print("id=WDXFGHKM");
         // float test1 = EEPROM_READ(0, float);
         // float test2 = EEPROM_READ(4, float);
         // float test3 = EEPROM_READ(8, float);
