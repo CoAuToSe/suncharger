@@ -325,16 +325,16 @@ void setup() {
     Serial.println();
 
     // initialisation de la communication avec l'INA219
-    if (! ina219.begin()) {
-        Serial.println("Erreur pour trouver le INA219");
-        while (1) { delay(10); }
-    }
+    // if (! ina219.begin()) {
+    //     Serial.println("Erreur pour trouver le INA219");
+    //     while (1) { delay(10); }
+    // }
 
     // Connexion au WiFi
-    setup_wifi();
+    // setup_wifi();
 
     // Configuration de la connexion au broker MQTT
-    client.setServer(IP_RASPBERRY, 1883);
+    // client.setServer(IP_RASPBERRY, 1883);
 
     // Initialistaion du SPI (dépendances)
     // SPI.begin();
@@ -343,7 +343,7 @@ void setup() {
     // rfid.PCD_Init();
 
     // Déclaration de la fonction de récupération des données reçues du broker MQTT
-    client.setCallback(callback);
+    // client.setCallback(callback);
     
     // EEPROM_write(0, 1.1);
     // EEPROM_write(4, 2.2);

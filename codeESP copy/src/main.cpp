@@ -58,7 +58,7 @@ byte * Wheel(byte WheelPos) {
 
 const byte listeUID[4] = {245,100,55,70};
 //const int buzz = D0;
-const int pinLEDrgb = D4;
+const int pinLEDrgb = D0;
 const int relai = D1; 
 
 bool casier = true;
@@ -103,6 +103,7 @@ void rainbowCycle(int SpeedDelay) {
 
 void setup()
 {
+  pinMode(LED_BUILTIN, OUTPUT);
 
   Serial.begin(115200);
   SPI.begin(); // Init SPI bus
@@ -157,23 +158,48 @@ void setup()
   /* ANIMATION LED FIN */
 }
 
- 
+unsigned long last = 0;
+unsigned char stateLed = 0;
+
 void loop() {
+    if (millis() - last > 500) {
+      last = millis();
+      stateLed = (stateLed + 1 ) %2;
+      digitalWrite(LED_BUILTIN, stateLed);
+      Serial.print("LED : ");
+      Serial.println(stateLed);
+    }
+      pixels.clear();
+      pixels.setPixelColor(3, pixels.Color(150, 150, 150));
+      pixels.show();
+      delay(500);
 
   //rainbowCycle(5); // Arc-en-cieel
 
-  // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
-  if ( ! rfid.PICC_IsNewCardPresent())
-    return;
+  // // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
+  // if ( ! rfid.PICC_IsNewCardPresent())
+  //   return;
+      // pixels.clear();
+      pixels.setPixelColor(3, pixels.Color(0, 0, 0));
+      pixels.show();
+      delay(100);
 
-  // Verify if the NUID has been readed
-  if ( ! rfid.PICC_ReadCardSerial())
-    return;
+  // // Verify if the NUID has been readed
+  if ( !rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial() ){
+    return;}
 
+      // pixels.clear();
+      pixels.setPixelColor(3, pixels.Color(150, 0, 150));
+      pixels.show();
+      delay(100);
   Serial.print("PICC type: ");
   MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
   Serial.println(rfid.PICC_GetTypeName(piccType));
 
+      // pixels.clear();
+      pixels.setPixelColor(3, pixels.Color(0, 150, 150));
+      pixels.show();
+      delay(100);
   // Check is the PICC of Classic MIFARE type
   if (piccType != MFRC522::PICC_TYPE_MIFARE_MINI &&  
     piccType != MFRC522::PICC_TYPE_MIFARE_1K &&
@@ -182,6 +208,10 @@ void loop() {
     return;
   }
 
+      // pixels.clear();
+      pixels.setPixelColor(3, pixels.Color(150, 150, 0));
+      pixels.show();
+      delay(100);
   if (rfid.uid.uidByte[0] != nuidPICC[0] || 
     rfid.uid.uidByte[1] != nuidPICC[1] || 
     rfid.uid.uidByte[2] != nuidPICC[2] || 
@@ -205,7 +235,7 @@ void loop() {
     Serial.println();
 
     // on allume la LED verte
-     pixels.clear();
+    //  pixels.clear();
      pixels.setPixelColor(4, pixels.Color(0, 150, 0));
      pixels.show();
 
@@ -232,7 +262,7 @@ void loop() {
       delay(2000);
       digitalWrite(relai, LOW);
 
-      pixels.clear();
+      // pixels.clear();
       pixels.show();
     }
         
@@ -245,7 +275,7 @@ void loop() {
           // delay(100);
           // tone(buzz, 370, 300);
         }
-         pixels.clear();
+        //  pixels.clear();
          pixels.show();
   }
 
@@ -253,10 +283,10 @@ void loop() {
 
     Serial.println(F("Card read previously."));
 
-    if (not casier){ // Retrait de son téléphone
+    if (casier == false){ // Retrait de son téléphone
 
       casier = !casier;
-       pixels.clear();
+      //  pixels.clear();
        pixels.setPixelColor(4, pixels.Color(0, 150, 0));
        pixels.show();
 
@@ -275,7 +305,7 @@ void loop() {
       delay(2000);
       digitalWrite(relai, LOW);
 
-       pixels.clear();
+      //  pixels.clear();
        pixels.show();
 
       byte nuidPICC[4] = {0,0,0,0};
@@ -284,7 +314,7 @@ void loop() {
     else{
       
       casier = !casier;
-       pixels.clear();
+      //  pixels.clear();
        pixels.setPixelColor(4, pixels.Color(0, 150, 0));
        pixels.show();
 
@@ -303,18 +333,29 @@ void loop() {
       delay(2000);
       digitalWrite(relai, LOW);
 
-       pixels.clear();
+      //  pixels.clear();
        pixels.show();
     }
 
   }
 
+      // pixels.clear();
+      pixels.setPixelColor(3, pixels.Color(0, 150, 0));
+      pixels.show();
+      delay(100);
   // Halt PICC
   rfid.PICC_HaltA();
+      // pixels.clear();
+      pixels.setPixelColor(3, pixels.Color(150, 0, 0));
+      pixels.show();
+      delay(100);
 
   // Stop encryption on PCD
   rfid.PCD_StopCrypto1();
-
+      // pixels.clear();
+      pixels.setPixelColor(3, pixels.Color(0, 0, 150));
+      pixels.show();
+      delay(100);
 }
 
 
