@@ -24,16 +24,22 @@
 #define SSID "raspi-webgui"                     // indiquer le SSID de votre réseau
 #define PASSWORD "ChangeMe"                     // indiquer le mdp de votre réseau
 #define IP_RASPBERRY "10.3.141.1"               // adresse du serveur MQTT auquel vous etes connecté
-#define PORT_RASPBERRY 5678
+// #define PORT_RASPBERRY 5678
+#define N8N_PORT 5678
+#define MQTT_PORT 1883
 
 #define NOMBRE_CASIER 1
 #define PRINT true
 #define INTERNET true
 #define CASIER true
+#define RESET_EEPROM false
+#define USE_MQTT false
 
 #define SS_PIN D8
 #define RST_PIN D3
 #define NUM_LEDS 5
+#define DEBUG true
+#define NUM_DEBUG_LED 3
 
 
 Adafruit_INA219 ina219;
@@ -74,9 +80,10 @@ const int play[][3] = {
 
 /** WIFI **/
 WiFiClient espClient;
-PubSubClient client(espClient);
-boolean wifi_connected = false;
-WiFiClient client_global;
+PubSubClient mqtt_client(espClient);
+// boolean wifi_connected = false; //deprecated
+
+WiFiClient html_client;
 
 /* MQTT */
 #define TPC_NAME_SIZE 80
@@ -143,6 +150,16 @@ bool casier_disponible[4] = {true, true, true, true};
         pixels.clear(); \
         pixels.show();  \
     }
+
+#if DEBUG
+#define DEBUG_LED(t, r, g, b) \
+    {                            \
+        LED(NUM_DEBUG_LED, r, g, b);         \
+        delay(t);                \
+    }
+#else
+#define DEBUG_LED(i, r, g, b)
+#endif
 
 #if CASIER
 #define Ouvrir_casier(indice, rfia) { \

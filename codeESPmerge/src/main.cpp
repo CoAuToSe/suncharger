@@ -32,35 +32,50 @@ void rainbowCycle(int SpeedDelay) {
     }
 }
 
-/* Fonction de paramètrage du WiFi */
-void setup_wifi() {
-    delay(10);
-    // Nous affichons le nom du réseau WiFi sur lequel nous souhaitons nous connecter
-    Println();
-    Print("Connecting to ");
-    Println(SSID);
 
-    // Configuration du WiFi pour faire une connexion à une borne WiFi
-    WiFi.mode(WIFI_STA);
+// unsigned long last = 0;
+// unsigned char stateLed = 0;
+/* make LEDs rainbow */
+void rainbowCycleAsyncWifi(int SpeedDelay) {
+    // // loop
+    // if (millis() - last > 500) {
+    //   last = millis();
+    //   stateLed = (stateLed + 1 ) %2;
+    //   digitalWrite(LED_BUILTIN, stateLed);
+    //   Serial.print("LED : ");
+    //   Serial.println(stateLed);
+    // }
+    byte *c;
+    uint16_t i, j;
 
-    // Connexion au réseau WiFi "SSID" avec le mot de passe contenu dans "password"
-    WiFi.begin(SSID, PASSWORD);
     
-    // Tant que le WiFi n'est pas connecté, on attends!
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Print(".");
+    // while 
+    for (j = 0; j < 151*5; j++) { // 5 cycles of all colors on wheel
+        for (i = 0; i < NUM_LEDS; i++) {
+            c = Wheel(((i * 151 / NUM_LEDS) + j) & 150);
+            LED_temp(i,*c, *(c+1), *(c+2));
+        }
+        LED_show();
+        delay(SpeedDelay);
+        LED_clear();
     }
-    Println("");
-    Println("WiFi connected");
-
-    // Affichage de l'adresse IP du module
-    Print("IP address: ");
-    Println(WiFi.localIP());
 }
 
-/* Fonction appelé lors de la réception de donnée via le MQTT */
-void callback(char* topic, byte* payload, unsigned int length) {
+
+void HTML_send(String parameters, byte code_rfid_to_check[4]) {
+    if (html_client.connected()) {
+        Println("[Sending HTML request]");
+        String message = String("GET /webhook/innov?") + parameters + " HTTP/1.1\r\n" +
+                        "Host: " + IP_RASPBERRY + "\r\n" +
+                        "Connection: close\r\n" +
+                        "\r\n";
+        html_client.print(message);
+    } else {
+        Println("[HTML not connected]");
+    }
+}
+/* Fonction appelé lors de la réception de donnée via MQTT */
+void callback_MQTT(char* topic, byte* payload, unsigned int length) {
 
     // Afficher le message reçu
     Print("Message arrived [");
@@ -76,6 +91,76 @@ void callback(char* topic, byte* payload, unsigned int length) {
     //********************************//
     
 }
+/* Fonction appelé lors de la réception de donnée via HTML */
+void callback_HTML(char* topic, byte* payload, unsigned int length) {
+
+    String answer = "";
+    // Afficher le message reçu
+    Print("reponse de n8n: [");
+    Print(topic);
+    Print("] ");
+    for (unsigned int i = 0; i < length; i++) {
+        answer += (char)payload[i];
+        Print((char)payload[i]);
+    }
+    Println();
+    Println(answer);
+    if (answer != "done") { 
+        LED_clear();                        
+        LED(0, 150, 0, 0);                  
+        delay(2000);                        
+        LED_clear()    
+        // return false;
+    }
+    // return true;
+}
+
+/* Fonction de paramètrage du WiFi */
+void setup_MQTT_wifi() {
+    mqtt_client.setServer(IP_RASPBERRY, MQTT_PORT); // Configuration de la connexion au broker MQTT
+    mqtt_client.setCallback(callback_MQTT);         // Déclaration de la fonction de récupération des données reçues du broker MQTT
+}
+
+void setup_HTML_wifi() {
+    html_client.setServer(IP_RASPBERRY, N8N_PORT);  // Configuration de la connexion au broker HTML
+    html_client.setCallback(callback_HTML);         // Déclaration de la fonction de récupération des données reçues du broker HTM
+}
+
+void setup_wifi() {
+    #if INTERNET
+    delay(10);
+    // Nous affichons le nom du réseau WiFi sur lequel nous souhaitons nous connecter
+    Println();
+    Print("Connecting to ");
+    Println(SSID);
+
+    // Configuration du WiFi pour faire une connexion à une borne WiFi
+    WiFi.mode(WIFI_STA);
+
+    // Connexion au réseau WiFi "SSID" avec le mot de passe "PASSWORD"
+    WiFi.begin(SSID, PASSWORD);
+    
+    // Tant que le WiFi n'est pas connecté, on attends!
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Print(".");
+    }
+    Println("");
+    Println("WiFi connected");
+    // Affichage de l'adresse IP du module ESP
+    Print("ESP IP: ");
+    Println(WiFi.localIP());
+
+    setup_MQTT_wifi();
+    setup_HTML_wifi();
+    #endif
+}
+String HTML_manage_com(String para, byte local_code_rfid[4]) {
+    String returned = "";
+    LED(0, 150, 0, 150);
+    HTML_send(para, local_code_rfid);
+    return returned;
+}
 
 /* Fonction de reconnexion au broker MQTT */
 void reconnect() {
@@ -88,7 +173,7 @@ void reconnect() {
         clientId += String(random(0xffff), HEX);
         
         // Tentative de connexion
-        if (client.connect(clientId.c_str())) {
+        if (mqtt_client.connect(clientId.c_str())) {
 
             // Connexion réussie
             Println("connected");
@@ -97,13 +182,13 @@ void reconnect() {
             snprintf(inTopic, TPC_NAME_SIZE, "ESME/#");
             
             // inTopic => /ESME/COMPTEUR/inTopic
-            client.subscribe(inTopic);
+            mqtt_client.subscribe(inTopic);
 
         } else {
 
             // Tentative échouée
             Print("failed, rc=");
-            Print(client.state());
+            Print(mqtt_client.state());
             // Println(" try again in 5 seconds");
 
             // Attente de 5 secondes avant une nouvelle tentative
@@ -136,7 +221,7 @@ void send_MQTT(float &my_value, const char * my_topic ) {
     // outTopic => /ESME/COMPTEUR/my_topic
 
     // Envoi de la donnée
-    client.publish(outTopic, msg);
+    mqtt_client.publish(outTopic, msg);
 }
 
 // deprecated
@@ -145,7 +230,7 @@ bool healthy_internet() {
     bool connected = client_global.connected();
     if (!connected) {
         Printbf("\n[Connecting to %s ... ", IP_RASPBERRY);
-        if (client_global.connect(IP_RASPBERRY, PORT_RASPBERRY)) {
+        if (client_global.connect(IP_RASPBERRY, N8N_PORT)) {
             Println("connected]");
         } else {
             Println("connection failed!]");
@@ -163,7 +248,7 @@ String HTTP_connect_send_and_Print(String parameters) {// deprecated
     String returned = "";
     WiFiClient client_local;
     Printbf("\n[Connecting to %s ... ", IP_RASPBERRY);
-    if (client_local.connect(IP_RASPBERRY, PORT_RASPBERRY)) {
+    if (client_local.connect(IP_RASPBERRY, N8N_PORT)) {
         Println("connected]");
 
         // Println("[Sending a request]");
@@ -339,11 +424,13 @@ bool internet_accept(byte code_rfid[4]) {
 
 int RFID() {
     int address = -1;
-
+    DEBUG_LED(400, 150, 150, 150);
+    DEBUG_LED(100, 0, 0, 0);
     // rainbowCycle(5); // Arc-en-cieel
 
     // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
     if ( ! rfid.PICC_IsNewCardPresent()) {return -2;}
+    DEBUG_LED(250,  0, 150, 150);
 
     // Verify if the NUID has been readed
     if ( ! rfid.PICC_ReadCardSerial()) {
@@ -362,7 +449,7 @@ int RFID() {
         Println(F("Your tag is not of type MIFARE Classic."));
         return -4;
     }
-    // on allume la LED 0 en bleu, indique que la carte a été détecté
+    // on allume la LED 0 en bleu, indique que la carte a été détecté et accepté
     LED_clear();
     LED(0, 0, 0, 150);// LED 0 en bleu
 
@@ -434,6 +521,7 @@ int RFID() {
     LED_clear();
     rfid.PICC_HaltA(); // Halt PICC
     rfid.PCD_StopCrypto1(); // Stop encryption on PCD
+    DEBUG_LED(250, 150, 150, 0);
     return address;
 }
 
@@ -457,13 +545,14 @@ void init_EEPROM() {
 }
 
 void init_custom_EEPROM() {
+    #if RESET_EEPROM
     for (int indice = 0; indice < 4; indice ++) {
         for (byte i = 0; i < 4; i++) {
             EEPROM_write(4*i + 16 * indice, 0);
         }
     }
+    #endif
 }
-
 
 void setup() {
     delay(1000);
@@ -485,10 +574,10 @@ void setup() {
     }
 
     init_leds();                            // initialisation du bandeau leds
-    // setup_wifi();                           // Connexion au WiFi
-    // client.setServer(IP_RASPBERRY, 1883);   // Configuration de la connexion au broker MQTT
-    // client.setCallback(callback);           // Déclaration de la fonction de récupération des données reçues du broker MQTT
-    // init_custom_EEPROM(); // permet d'enregistrer une carte prédéfine dans l'ESP
+    setup_wifi();
+    setup_MQTT_wifi();                      // Connexion au WiFi MQTT
+    // setup_HTML_wifi();                      // Connexion au WiFi HTML
+    init_custom_EEPROM();                   // permet d'enregistrer une carte prédéfine dans l'ESP
     init_EEPROM();
 
     // wifi_connected = connect_serveur_HTML(client_someone);
@@ -497,7 +586,8 @@ void setup() {
 void loop() {
     // if (!client.connected()) { reconnect(); } // Si perte de connexion MQTT, on essaye une reconnexion!
     // client.loop(); // Appel de fonction pour redonner la main au process de communication MQTT
-
+    byte lol[4] = {0, 0, 0, 0};
+    HTML_send((String) "id=0.0.0.0", lol);
     int user_RFID_address = RFID();
     Print("address:");
     Println(user_RFID_address);
