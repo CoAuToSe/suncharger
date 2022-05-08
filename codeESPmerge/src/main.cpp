@@ -1,5 +1,13 @@
 #include "main.h"
 
+
+void play_music(const int song[][3]) {
+    for (int i = 0; i < sizeof(song)-1; i++) { 
+        tone(buzz, song[i][0], song[i][1]);  
+        delay(song[i][2]);
+    }
+}
+
 /* Print Pretty Hexadecimal */
 void PrintHex(byte *buffer, byte bufferSize) {
     for (byte i = 0; i < bufferSize; i++) {
@@ -117,13 +125,15 @@ void callback_HTML(char* topic, byte* payload, unsigned int length) {
 
 /* Fonction de paramètrage du WiFi */
 void setup_MQTT_wifi() {
+    #if MQTT_active
     mqtt_client.setServer(IP_RASPBERRY, MQTT_PORT); // Configuration de la connexion au broker MQTT
     mqtt_client.setCallback(callback_MQTT);         // Déclaration de la fonction de récupération des données reçues du broker MQTT
+    #endif
 }
 
 void setup_HTML_wifi() {
-    html_client.setServer(IP_RASPBERRY, N8N_PORT);  // Configuration de la connexion au broker HTML
-    html_client.setCallback(callback_HTML);         // Déclaration de la fonction de récupération des données reçues du broker HTM
+    // html_client.setServer(IP_RASPBERRY, N8N_PORT);  // Configuration de la connexion au broker HTML
+    // html_client.setCallback(callback_HTML);         // Déclaration de la fonction de récupération des données reçues du broker HTM
 }
 
 void setup_wifi() {
@@ -164,6 +174,7 @@ String HTML_manage_com(String para, byte local_code_rfid[4]) {
 
 /* Fonction de reconnexion au broker MQTT */
 void reconnect() {
+    #if MQTT_active
     // Tant que le client n'est pas connecté...
     // while (!client.connected()) {
         Print("Attempting MQTT connection...");
@@ -195,21 +206,19 @@ void reconnect() {
             // delay(5000);
         }
     // }
+    #endif
 }
 
 void setup_pins() {
-    // Paramètrage de la pin BUILTIN_LED en sortie
-    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(LED_BUILTIN, OUTPUT); // LED sur de l'ESP8266
 
-    // pinMode(pinLEDVerte, OUTPUT);
-    // pinMode(pinLEDRouge, OUTPUT);
-    // pinMode(buzz, OUTPUT);
     pinMode(pinLEDrgb, OUTPUT);
-    // pinMode(buzz, OUTPUT);
+    pinMode(buzz, OUTPUT);
     pinMode(relai, OUTPUT);
 }
 
 void send_MQTT(float &my_value, const char * my_topic ) {
+    #if MQTT_active
     snprintf(msg, MSG_BUFFER_SIZE,"%f", my_value);
     // Print("[MQTT] Publish message: ");
     // Print(msg);
@@ -219,6 +228,7 @@ void send_MQTT(float &my_value, const char * my_topic ) {
     // Construction du topic d'envoi
     snprintf(outTopic, TPC_NAME_SIZE, my_topic);
     // outTopic => /ESME/COMPTEUR/my_topic
+    #endif
 
     // Envoi de la donnée
     mqtt_client.publish(outTopic, msg);
@@ -350,14 +360,17 @@ bool RFID_read_Print_and_recognize() {
     return false;
 }
 
-void MQTT_communication_info() {
+void send_battery_info() {
+    #if MQTT_active
     // Construction du message à envoyer
     float current_mA = 0;
     float voltage_V = 0;
     float shunt_voltage_mV = 0;
+    #if INA2019
     current_mA = ina219.getCurrent_mA();
     voltage_V = ina219.getBusVoltage_V();
     shunt_voltage_mV = ina219.getShuntVoltage_mV();
+    #endif
     // Println(current_mA);
     // Println(voltage_V);
     // Println(shunt_voltage_mV);
@@ -365,11 +378,12 @@ void MQTT_communication_info() {
     send_MQTT(current_mA, "ESME/COMPTEUR_AMP");
     send_MQTT(voltage_V, "ESME/COMPTEUR_VOL");
     send_MQTT(shunt_voltage_mV, "ESME/COMPTEUR_SmV");
+    #endif
 }
 
 void init_leds() {
 
-    LED_init();
+    LED_init();//library init
     LED_clear();
 
     /* ANIMATION LED DÉBUT */
@@ -418,25 +432,27 @@ bool internet_accept(byte code_rfid[4]) {
     }
     return true;
     #else
-    return true;
+    return true; // on considère qu'internet accepte la demande
     #endif
 }
 
 int RFID() {
     int address = -1;
+    #if RFID_ACTIVE
     DEBUG_LED(400, 150, 150, 150);
     DEBUG_LED(100, 0, 0, 0);
     // rainbowCycle(5); // Arc-en-cieel
 
     // Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
     if ( ! rfid.PICC_IsNewCardPresent()) {return -2;}
-    DEBUG_LED(250,  0, 150, 150);
+    DEBUG_LED(250, 0, 150, 150);
 
     // Verify if the NUID has been readed
     if ( ! rfid.PICC_ReadCardSerial()) {
         Print(rfid.PICC_GetType(rfid.uid.sak));
         return -3;
     }
+    DEBUG_LED(250, 0, 0, 150);
 
     Print("PICC type: ");
     MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
@@ -473,13 +489,13 @@ int RFID() {
                     return -5;
 
                 LED(indice+1, 0, 150, 0);// LED &indice+1 en vert
-
-                // play_sound(play);
+                MUSIC(succes_song);
                 address = 16 * indice;
                 Ouvrir_casier(indice, rfid.uid.uidByte[i]);
                 break;
             } else { // si le casiers est pris
                 LED(indice+1, 150, 0, 0);// LED &indice+1 en rouge
+                #if DEBUG // permet d'afficher l'identifiant de la carte que le casier contient
                 Print("code RFID:");
                 for (byte i = 0; i < 4; i++) {
                     Print(nuidPICC[indice][i]);
@@ -487,33 +503,26 @@ int RFID() {
                 }
                 Print(" | ");
                 Println(casier_disponible[indice]);
-                delay(1000);
-                // delay(1000);
-                // tone(buzz,370,50);
-                // delay(100);
-                // tone(buzz, 370, 300);
+                #endif
+                MUSIC(failure_song);
             }
         } else {// on lit la même carte que celle du casier &indice
 
             Println(F("Card read previously."));
             // Retrait de son téléphone
             if (!casier_disponible[indice]) {// check que le casier est bien pris // sûrement inutile
-                LED(indice+1, 0, 150,0);// LED &indice+1 en vert
-
-                // play_music(play);
-
-                // address = -10;
+                LED(indice+1, 0, 150,0);
+                MUSIC(succes_song);
                 Ouvrir_casier(indice, 0);
+                // address = -10;
                 break;
             } else {// devrais jamais arriver // on lit la carte du casier et le casier n'est pas pris
                 if (!internet_accept(rfid.uid.uidByte))
                     return -5;
-                LED(indice+1, 0, 150,0);// LED &indice+1 en vert
-
-                // play_music(play);
-
-                address = 16 * indice;
+                LED(indice+1, 0, 150,0);
+                MUSIC(succes_song);
                 Ouvrir_casier(indice, rfid.uid.uidByte[i]);
+                address = 16 * indice;
                 break;
             }
         }
@@ -521,6 +530,7 @@ int RFID() {
     LED_clear();
     rfid.PICC_HaltA(); // Halt PICC
     rfid.PCD_StopCrypto1(); // Stop encryption on PCD
+    #endif
     DEBUG_LED(250, 150, 150, 0);
     return address;
 }
@@ -555,19 +565,23 @@ void init_custom_EEPROM() {
 }
 
 void setup() {
-    delay(1000);
+    delay(500);
     setup_pins();           // assignation des pins de l'ESP
 
+    #if PRINT
     Serial.begin(115200);   // Configuration de la communication série à 115200 Mbps
+    #endif
     Println();
     SPI.begin();            // Initialistaion du SPI (dépendances)
     rfid.PCD_Init();        // Configuration du RFID
 
-    // // initialisation de la communication avec l'INA219
-    // if (! ina219.begin()) {
-    //     Println("Erreur pour trouver le INA219");
-    //     while (1) { delay(10); }
-    // }
+    #if INA2019
+    // initialisation de la communication avec l'INA219
+    if (! ina219.begin()) {
+        Println("Erreur pour trouver le INA219");
+        while (1) { delay(10); }
+    }
+    #endif
 
     for (byte i = 0; i < 6; i++) {
         key.keyByte[i] = 0xFF;
@@ -584,17 +598,22 @@ void setup() {
 }
 
 void loop() {
-    // if (!client.connected()) { reconnect(); } // Si perte de connexion MQTT, on essaye une reconnexion!
-    // client.loop(); // Appel de fonction pour redonner la main au process de communication MQTT
+    #if MQTT_active
+    if (!client.connected()) { reconnect(); } // Si perte de connexion MQTT, on essaye une reconnexion!
+    client.loop(); // Appel de fonction pour redonner la main au process de communication MQTT
+    #endif
+
+    #if ALPHA
     byte lol[4] = {0, 0, 0, 0};
     HTML_send((String) "id=0.0.0.0", lol);
+    #endif
     int user_RFID_address = RFID();
     Print("address:");
     Println(user_RFID_address);
     // unsigned long now = millis();
     // if (now - lastMsg > 2000) {
     //     lastMsg = now;
-    //     MQTT_communication_info();
+    //     send_battery_info();
     //     Println(HTTP_connect_send_and_Print("id=hello"));
     //     Println(HTTP_connect_send_and_Print("id=WDXFGHKML"));
     //     Println(HTTP_connect_send_and_Print("id=WDXFGHKM"));
