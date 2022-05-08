@@ -30,17 +30,22 @@
 
 #define NOMBRE_CASIER 1
 #define PRINT true
-#define INTERNET true
+#define INTERNET false
+#define RFID_ACTIVE true
 #define CASIER true
 #define RESET_EEPROM false
-#define USE_MQTT false
+#define MUSIC_ACTIVE true
+#define INA2019 false
+#define MQTT_active false
 
+#define ALPHA true
+#define DEBUG true
 #define SS_PIN D8
 #define RST_PIN D3
 #define NUM_LEDS 5
-#define DEBUG true
 #define NUM_DEBUG_LED 3
 
+#define TEMP_music_switch true
 
 Adafruit_INA219 ina219;
 
@@ -69,13 +74,23 @@ byte * Wheel(byte WheelPos) {
 }
 
 
-const int play[][3] = {
+const int succes_song[][3] = {
     {523 , 50, 50 },
     {783 , 50, 50 },
     {1046, 50, 50 },
     {1568, 50, 50 },
     {2093, 70, 250},
 };
+
+const int failure_song[][3] = {
+    {370 , 50, 100 },
+    {370 , 300, 1000 },
+    {0 , 0, 0 },
+    {0 , 0, 0 },
+    {0 , 0, 0 },
+};
+
+
 
 
 /** WIFI **/
@@ -92,13 +107,14 @@ char outTopic[TPC_NAME_SIZE];
 
 
 /* setup des pin.s de la carte pour la connexion avec le module RFID */
-// const int pinRST    = D3; // pin RST du module RC522
-// const int pinSS     = D8; // pin SS du module RC522
-// const int pinMOSI   = D7; // pin MOSI du module RC522
-// const int pinMISO   = D6; // pin MISO du module RC522
-// const int pinSCK    = D5; // pin SCK du module RC522
-// const int pinSDA    = pinSS; // pin SDA du module RC522
-// const int buzz = D0;
+const int pinSDA    = D8; // pin SDA du module RC522
+const int pinSCK    = D5; // pin SCK du module RC522
+const int pinMOSI   = D7; // pin MOSI du module RC522
+const int pinMISO   = D6; // pin MISO du module RC522
+const int pinRST    = D3; // pin RST du module RC522
+
+const int pinSS     = pinSDA; // pin SS du module RC522
+const int buzz = D2;
 const int pinLEDrgb = D4;
 const int relai = D1; 
 
@@ -152,30 +168,60 @@ bool casier_disponible[4] = {true, true, true, true};
     }
 
 #if DEBUG
-#define DEBUG_LED(t, r, g, b) \
-    {                            \
-        LED(NUM_DEBUG_LED, r, g, b);         \
-        delay(t);                \
+#define DEBUG_LED(t, r, g, b)           \
+    {                                   \
+        LED(NUM_DEBUG_LED, r, g, b);    \
+        delay(t);                       \
+    }
+#define DEBUG_Print(a)     \
+    {                      \
+        Serial.print("[DEBUG] "); \
+        Serial.println(a); \
+    }
+#define DEBUG_Print(a,b)     \
+    {                      \
+        Serial.print("[DEBUG] "); \
+        Serial.println(a,b); \
     }
 #else
 #define DEBUG_LED(i, r, g, b)
+#define DEBUG_Print(a)
+#define DEBUG_Print(a,b)
 #endif
 
 #if CASIER
-#define Ouvrir_casier(indice, rfia) { \
-                /* on assigne le casier à la carte */ \
-                digitalWrite(relai, HIGH); /* ouverture locket &indice */ \
-                 \
-                casier_disponible[indice] = !casier_disponible[indice]; \
-                /* on stock le code de la nouvelle carte si le casier n'est pas pris */ \
-                for (byte i = 0; i < 4; i++) { \
-                    nuidPICC[indice][i] = rfia; \
+#define Ouvrir_casier(indice, rfia) {                                                                   \
+                /* on assigne le casier à la carte */                                                   \
+                digitalWrite(relai, HIGH); /* ouverture locket {&indice} */                               \
+                casier_disponible[indice] = !casier_disponible[indice];                                 \
+                /* on stock le code de la nouvelle carte si le casier n'est pas pris */                 \
+                for (byte i = 0; i < 4; i++) {                                                          \
+                    nuidPICC[indice][i] = rfia;                                                         \
                     EEPROM_write(4*i + 16 * indice, nuidPICC[indice][i]);/* devrais écrire sur des 0 */ \
-                } \
-                delay(2000); \
-                digitalWrite(relai, LOW);/* fermeture locket &indice */ \
+                }                                                                                       \
+                delay(2000);                                                                            \
+                digitalWrite(relai, LOW);/* fermeture locket &indice */                                 \
 }
 #else
 #define Ouvrir_casier(indice)
 #endif
 
+#if MUSIC_ACTIVE
+#if TEMP_music_switch 
+#define MUSIC(song) {   \
+    for (int i = 0; i < sizeof(song)-1; i++) {  \
+        tone(buzz, song[i][0], song[i][1]);   \
+        delay(song[i][2]); \
+    } \
+}
+#else
+#define MUSIC(song) {   \
+    for (int notes = 0, notes < 5; notes++){ \
+        tone(buzz, succes_song[0], succes_song[1]); \
+        delay(succes_song[2]); \
+    } \
+}
+#endif
+#else
+#define MUSIC(song) 
+#endif
