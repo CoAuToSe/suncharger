@@ -85,47 +85,47 @@
 #define N8N_PORT 5678
 #define MQTT_PORT 1883
 void setup() {
-  Serial.begin(115200);
-  WiFi.begin(SSID, PASSWORD);
-  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.printf("WiFi Failed!\n");
-    return;
-  }
-  Serial.printf("WiFi Connected!\n");
-  Serial.println(WiFi.localIP());
-#ifdef ESP8266
-  ArduinoOTA.begin();
-#endif
-  
-  SyncClient client;
-  if(!client.connect(SERVER_HOST_NAME, TCP_PORT)){
-    Serial.println("Connect Failed");
-    return;
-  }
-//   client.setTimeout(2);
-  const char* message = "GET /webhook/innov?id=hello2 HTTP/1.1\r\nHost: 10.3.141.1\r\nConnection: close\r\n\r\n";
-  if(client.printf( message) > 0){
-    while(client.connected() && client.available() == 0){
-      delay(1);
+    Serial.begin(115200);
+    WiFi.begin(SSID, PASSWORD);
+    if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+        Serial.printf("WiFi Failed!\n");
+        return;
     }
-    while(client.available()){
-      Serial.write(client.read());
+    Serial.printf("WiFi Connected!\n");
+    Serial.println(WiFi.localIP());
+    #ifdef ESP8266
+    ArduinoOTA.begin();
+    #endif
+    
+    SyncClient client;
+    if(!client.connect(SERVER_HOST_NAME, TCP_PORT)){
+        Serial.println("Connect Failed");
+        return;
     }
-    if(client.connected()){
-      client.stop();
+  //   client.setTimeout(2);
+    const char* message = "GET /webhook/innov?id=hello2 HTTP/1.1\r\nHost: 10.3.141.1\r\nConnection: close\r\n\r\n";
+    if(client.printf( message) > 0){
+        while(client.connected() && client.available() == 0){
+            delay(1);
+        }
+        while(client.available()){
+            Serial.write(client.read());
+        }
+        if(client.connected()){
+            client.stop();
+        }
+    } else {
+        client.stop();
+        Serial.println("Send Failed");
+        while(client.connected()) delay(0);
     }
-  } else {
-    client.stop();
-    Serial.println("Send Failed");
-    while(client.connected()) delay(0);
-  }
 }
 
 void loop() {
-#ifdef ESP8266
-  ArduinoOTA.handle();
-#endif
-  
+    #ifdef ESP8266
+    ArduinoOTA.handle();
+    #endif
+    
     Serial.println("looping");
-	delay(100);
+    delay(100);
 }
